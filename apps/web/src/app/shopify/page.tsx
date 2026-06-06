@@ -8,8 +8,9 @@ import { StackedAreaChart } from "@/components/charts/StackedAreaChart"
 import { StackedBarChart } from "@/components/charts/StackedBarChart"
 import { DataTable } from "@/components/chat/DataTable"
 import { TrendChart } from "@/components/chat/TrendChart"
-import { DateRangeControls } from "@/components/dashboard/DateRangeControls"
-import { geoLabel, skuLabel, utmLabel } from "@/lib/dashboard/page-helpers"
+import { DashboardFilterControls } from "@/components/dashboard/DashboardFilterControls"
+import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-filter"
+import { geoLabel, RETURN_CANCEL_SERIES, skuLabel, utmLabel } from "@/lib/dashboard/page-helpers"
 import { fetchShopifyDashboardData } from "@/lib/dashboard/queries/shopify"
 import {
   dateRangeLabel,
@@ -25,12 +26,14 @@ export default async function ShopifyPage({
   searchParams?: DashboardSearchParams
 }) {
   const range = parseDashboardDateRange(searchParams)
+  const brand = parseDashboardBrandFilter(searchParams)
   const rangeLabel = dateRangeLabel(range)
+  const brandText = brandLabel(brand)
 
   let data
   let error: string | null = null
   try {
-    data = await fetchShopifyDashboardData(range)
+    data = await fetchShopifyDashboardData(range, brand)
   } catch (e) {
     error = String(e)
     data = null
@@ -64,7 +67,7 @@ export default async function ShopifyPage({
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">Shopify Store</h1>
           <p className="text-sm text-stone-500 dark:text-night-500 mt-1">
-            Store & product analytics · {rangeLabel} · created_at_ist (IST)
+            Store & product analytics · {brandText} · {rangeLabel} · created_at_ist (IST)
           </p>
           {error && (
             <p className="mt-2 text-sm text-amber-400">
@@ -72,7 +75,7 @@ export default async function ShopifyPage({
             </p>
           )}
         </div>
-        <DateRangeControls
+        <DashboardFilterControls
           start={range.start}
           end={range.end}
           spanDays={range.spanDays}
@@ -81,7 +84,7 @@ export default async function ShopifyPage({
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ChartCard title="Revenue & orders daily" subtitle="net_orders bar · gross revenue + AOV lines" cube="shopify_orders">
+        <ChartCard title="Orders & gross revenue daily" subtitle="net_orders bar · gross revenue + AOV lines" cube="shopify_orders">
           <ComboLineBarChart
             rows={data?.revenueOrdersDaily ?? []}
             barMeasures={["shopify_orders.net_orders"]}
@@ -89,23 +92,23 @@ export default async function ShopifyPage({
           />
         </ChartCard>
 
-        <ChartCard title="Top products by units sold" subtitle="Ranked by total_quantity · shopify_order_line_items" cube="shopify_order_line_items">
+        <ChartCard title="Top products by net sales" subtitle="Ranked by net line sales ex GST" cube="product_performance">
           <HorizontalBarChart
             rows={data?.topProducts ?? []}
-            labelKey="shopify_order_line_items.product_title"
-            measureKeys={["shopify_order_line_items.total_quantity"]}
+            labelKey="product_performance.product_title"
+            measureKeys={["product_performance.net_line_revenue_ex_gst", "product_performance.gross_profit_ex_gst"]}
           />
         </ChartCard>
 
-        <ChartCard title="Return rate trend" subtitle="return_rate pre-filtered: RETURNED + IN_PROGRESS only" cube="shopify_orders">
-          <ComboLineBarChart
+        <ChartCard title="Return & cancel by product" subtitle="Returned vs cancelled units" cube="product_performance">
+          <StackedBarChart
             rows={data?.returnCancel ?? []}
-            barMeasures={["shopify_orders.returned_orders"]}
-            lineMeasures={["shopify_orders.return_rate"]}
+            series={[...RETURN_CANCEL_SERIES]}
+            categoryKey="product_performance.product_title"
           />
         </ChartCard>
 
-        <ChartCard title="Revenue by geography" subtitle="Country · province ranked" cube="shopify_orders">
+        <ChartCard title="Gross revenue by geography" subtitle="Country & province ranked · gross_revenue" cube="shopify_orders">
           <RankedList
             rows={geoRows}
             labelKey="geo"
@@ -119,11 +122,11 @@ export default async function ShopifyPage({
           <DataTable rows={(data?.utmBreakdown ?? []).slice(0, 8)} />
         </ChartCard>
 
-        <ChartCard title="Discount impact" subtitle="Daily discounts vs net revenue" cube="shopify_order_line_items">
+        <ChartCard title="Discount impact" subtitle="Daily discounts vs net sales" cube="shopify_order_line_items">
           <GroupedBarChart rows={data?.discountImpact ?? []} />
         </ChartCard>
 
-        <ChartCard title="Units per order" subtitle="Basket size over time" cube="shopify_order_line_items">
+        <ChartCard title="Units per order & AOV" subtitle="Basket size over time" cube="shopify_order_line_items">
           <TrendChart rows={data?.unitsPerOrder ?? []} />
         </ChartCard>
 
@@ -131,11 +134,11 @@ export default async function ShopifyPage({
           <DonutChart slices={fulfillmentDonut} />
         </ChartCard>
 
-        <ChartCard title="Units sold by SKU" subtitle="total_quantity ranked by SKU" cube="shopify_order_line_items">
+        <ChartCard title="Gross margin by SKU" subtitle="gross_profit_ex_gst ranked by SKU" cube="product_performance">
           <HorizontalBarChart
             rows={marginRows}
             labelKey="label"
-            measureKeys={["shopify_order_line_items.total_quantity"]}
+            measureKeys={["product_performance.gross_profit_ex_gst", "product_performance.net_line_revenue_ex_gst"]}
             height={320}
           />
         </ChartCard>

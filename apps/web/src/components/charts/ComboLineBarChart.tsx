@@ -10,6 +10,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts"
 import {
   CHART_COLORS,
@@ -81,6 +82,7 @@ export function ComboLineBarChart({ rows, barMeasures, lineMeasures }: Props) {
         />
         <YAxis
           yAxisId="left"
+          domain={["auto", "auto"]}
           tickFormatter={(v) =>
             lineIsPct ? `${(Number(v) * 100).toFixed(1)}%` : formatAxisTick(v, lineFormats)
           }
@@ -93,6 +95,7 @@ export function ComboLineBarChart({ rows, barMeasures, lineMeasures }: Props) {
           <YAxis
             yAxisId="right"
             orientation="right"
+            domain={["auto", "auto"]}
             tickFormatter={(v) => formatAxisTick(v, barFormats)}
             tick={{ fill: ct.tick, fontSize: 11 }}
             tickLine={false}
@@ -100,6 +103,7 @@ export function ComboLineBarChart({ rows, barMeasures, lineMeasures }: Props) {
             width={52}
           />
         )}
+        <ReferenceLine y={0} yAxisId="left" stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
           contentStyle={ct.tooltip}
           formatter={(v: number, name: string) => {

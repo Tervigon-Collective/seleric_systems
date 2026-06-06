@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ReferenceLine,
 } from "recharts"
 import { useChartTheme } from "@/hooks/useChartTheme"
 import {
@@ -120,6 +121,7 @@ export function TrendChart({ rows }: Props) {
         {hasLeft && (
           <YAxis
             yAxisId="left"
+            domain={["auto", "auto"]}
             tickFormatter={(v) => formatAxisTick(v, leftFormats)}
             tick={{ fill: ct.tick, fontSize: 11 }}
             tickLine={false}
@@ -131,6 +133,7 @@ export function TrendChart({ rows }: Props) {
           <YAxis
             yAxisId="right"
             orientation="right"
+            domain={["auto", "auto"]}
             tickFormatter={(v) => formatAxisTick(v, rightFormats)}
             tick={{ fill: ct.tick, fontSize: 11 }}
             tickLine={false}
@@ -138,6 +141,13 @@ export function TrendChart({ rows }: Props) {
             width={52}
           />
         )}
+        <ReferenceLine
+          y={0}
+          yAxisId={hasLeft ? "left" : "right"}
+          stroke={ct.grid}
+          strokeWidth={1.5}
+          strokeDasharray="4 2"
+        />
         <Tooltip
           contentStyle={ct.tooltip}
           formatter={(v: number, _name: string, item: { dataKey?: string | number }) => {

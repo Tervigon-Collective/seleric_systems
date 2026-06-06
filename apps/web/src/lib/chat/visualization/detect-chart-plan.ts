@@ -106,16 +106,21 @@ export function detectChartPlan(rows: CubeRow[], hintType?: string): ChartPlan[]
     }
   }
 
-  // 1. P&L dashboard
+  // 1. P&L dashboard — only for genuinely multi-month data (daily rows share months,
+  // so require ≥2 distinct calendar months to avoid mislabeling a daily chart).
   if (isPnlShape(profile) && profile.rowCount >= 4) {
-    plans.push({
-      kind: "pnl_dashboard",
-      title: "Monthly P&L with CAC & LTV metrics",
-      xKey: profile.dateKey!,
-      series: seriesFromKeys(pickPnlMetrics(profile), profile),
-    })
-    plans.push({ kind: "summary_kpi", xKey: xDate, series: [] })
-    return plans.slice(0, 4)
+    const dateKey = profile.dateKey!
+    const distinctMonths = new Set(rows.map((r) => String(r[dateKey] ?? "").slice(0, 7))).size
+    if (distinctMonths >= 2) {
+      plans.push({
+        kind: "pnl_dashboard",
+        title: "Monthly P&L with CAC & LTV metrics",
+        xKey: dateKey,
+        series: seriesFromKeys(pickPnlMetrics(profile), profile),
+      })
+      plans.push({ kind: "summary_kpi", xKey: xDate, series: [] })
+      return plans.slice(0, 4)
+    }
   }
 
   const keys = Object.keys(rows[0])
@@ -269,7 +274,7 @@ export function detectChartPlan(rows: CubeRow[], hintType?: string): ChartPlan[]
       })
     } else {
       plans.push({
-        kind: hintType === "channel" ? "line" : metrics.length > 2 ? "line" : "line",
+        kind: metrics.length > 2 ? "line" : "bar",
         title: "Trend",
         xKey: profile.dateKey,
         series: seriesFromKeys(metrics.slice(0, 5), profile),

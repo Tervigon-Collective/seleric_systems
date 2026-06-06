@@ -8,6 +8,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts"
 import {
   detectDateKey,
@@ -65,17 +66,19 @@ export function AreaTrendChart({ rows }: Props) {
           minTickGap={timeAxisMinTickGap(data.length)}
         />
         <YAxis
+          domain={["auto", "auto"]}
           tickFormatter={pct ? fmtPct : (v) => String(v)}
           tick={{ fill: ct.tick, fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={48}
         />
+        <ReferenceLine y={0} stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
           formatter={(v: number) => (pct ? fmtPct(v) : v.toFixed(2))}
           contentStyle={ct.tooltip}
         />
-        <Area type="monotone" dataKey={label} stroke="#34d399" fill="url(#areaFill)" strokeWidth={2} />
+        <Area type="monotone" dataKey={label} stroke="#34d399" fill="url(#areaFill)" strokeWidth={2} baseValue={0} />
       </AreaChart>
     </ResponsiveContainer>
   )

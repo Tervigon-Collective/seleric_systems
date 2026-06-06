@@ -30,11 +30,30 @@ export function timeAxisMinTickGap(pointCount: number): number {
   return pointCount > 90 ? 28 : 18
 }
 
+/** User-facing measure labels — net-sales terminology for P&L-aligned measures. */
+const MEASURE_LABEL_OVERRIDES: Record<string, string> = {
+  "daily_pnl.total_sales_ex_gst": "Net sales ex GST",
+  "canonical_pnl.net_sales_excl_tax": "Net sales ex GST",
+  "canonical_pnl.net_revenue_excl_tax": "Net sales ex GST",
+  "shopify_orders.net_sales_ex_gst": "Net sales ex GST",
+  "product_performance.net_line_revenue_ex_gst": "Net line sales ex GST",
+  "channel_pnl.meta_attributed_revenue_ex_gst": "Meta net sales ex GST",
+  "channel_pnl.google_attributed_revenue_ex_gst": "Google net sales ex GST",
+  "channel_pnl.organic_attributed_revenue_ex_gst": "Organic net sales ex GST",
+  "dw_meta_ads_attribution.attributed_revenue": "Attributed net sales",
+  "shopify_orders.gross_revenue": "Gross revenue",
+  "canonical_pnl.gross_sales_excl_tax": "Gross sales ex GST",
+  "product_performance.gross_line_revenue_ex_gst": "Gross line revenue ex GST",
+}
+
 export function prettyLabel(key: string): string {
-  return key
-    .replace(/^[^.]+\./, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return (
+    MEASURE_LABEL_OVERRIDES[key] ??
+    key
+      .replace(/^[^.]+\./, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  )
 }
 
 export function isCountMetric(key: string): boolean {
@@ -96,7 +115,7 @@ export function detectDateKey(rows: Record<string, unknown>[]): string | null {
   if (!rows.length) return null
   const keys = Object.keys(rows[0])
   return (
-    keys.find((k) => /report_date|created_at|date_start|date_stop/i.test(k)) ?? null
+    keys.find((k) => /report_date|created_at|order_date|date_start|date_stop/i.test(k)) ?? null
   )
 }
 

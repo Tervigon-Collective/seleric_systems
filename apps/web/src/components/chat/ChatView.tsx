@@ -68,10 +68,20 @@ function AssistantMessage({
   const anyToolRunning = msg.parts.some((p) => isToolRunning(p))
   const hasData = !!partitioned.mergedData
   const initialThinking = isStreaming && !partitioned.hasToolActivity && !narrative
+  const isDataComplete = !isStreaming && !partitioned.hasPendingTools
 
   return (
     <div className="w-full min-w-0">
-      {hasData && <InsightCanvas merged={partitioned.mergedData!} />}
+      {hasData && (
+        <div className={isDataComplete ? "" : "opacity-70"}>
+          <InsightCanvas merged={partitioned.mergedData!} />
+          {!isDataComplete && (
+            <div className="text-center py-2 text-sm text-stone-500 dark:text-night-500">
+              Loading data...
+            </div>
+          )}
+        </div>
+      )}
 
       {narrative && (
         <>

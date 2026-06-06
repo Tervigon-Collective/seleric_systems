@@ -1,14 +1,15 @@
-/**
- * Server-side Cube MCP client — calls Seleric MCP via SSE transport.
- * Never import this in client components (Node.js only).
- */
 import "server-only"
 
+import { AsyncLocalStorage } from "async_hooks"
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js"
 import { parseMcpText } from "./cube-parse"
 import { serverLog } from "./server-log"
 
-const MCP_URL = process.env.CUBE_MCP_URL ?? "https://mcp.seleric.com/sse"
+export type CubeToolCaller = (toolName: string, args: Record<string, unknown>) => Promise<unknown>
+
+const sessionStore = new AsyncLocalStorage<CubeToolCaller>()
+
+const MCP_URL = process.env.CUBE_MCP_URL ?? process.env.SELERIC_MCP_URL ?? "https://mcp.seleric.com/serve/sse"
 
 async function buildJWT(secret: string): Promise<string> {
   const enc = new TextEncoder()
@@ -42,13 +43,16 @@ function parseContent(content: unknown[]): unknown {
   return null
 }
 
-export async function callCubeTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+async function openOneOffConnection(
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
   const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js")
 
   const headers = await authHeaders()
   const transport = new SSEClientTransport(new URL(MCP_URL), { requestInit: { headers } })
-  const client = new Client({ name: "bi-chat", version: "1.0.0" }, {})
+  const client = new Client({ name: "bi-web", version: "1.0.0" }, {})
 
   serverLog("info", `cube connect → ${toolName}`)
   try {
@@ -62,7 +66,11 @@ export async function callCubeTool(toolName: string, args: Record<string, unknow
     serverLog("info", `cube → ${toolName}`, JSON.stringify(args).slice(0, 200))
     const result = await client.callTool({ name: toolName, arguments: args })
     const parsed = parseContent(result.content as unknown[])
-    serverLog("info", `cube ← ${toolName} (${Date.now() - t0}ms)`, Array.isArray(parsed) ? `${parsed.length} rows` : typeof parsed)
+    serverLog(
+      "info",
+      `cube ← ${toolName} (${Date.now() - t0}ms)`,
+      Array.isArray(parsed) ? `${parsed.length} rows` : typeof parsed
+    )
     return parsed
   } catch (err) {
     serverLog("error", `cube tool error ${toolName}`, String(err))
@@ -70,6 +78,47 @@ export async function callCubeTool(toolName: string, args: Record<string, unknow
   } finally {
     await client.close()
   }
+}
+
+/** Reuse one SSE connection for many tool calls (dashboard page loads). */
+export async function withCubeSession<T>(fn: () => Promise<T>): Promise<T> {
+  if (sessionStore.getStore()) return fn()
+
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
+  const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js")
+
+  const headers = await authHeaders()
+  const transport = new SSEClientTransport(new URL(MCP_URL), { requestInit: { headers } })
+  const client = new Client({ name: "bi-web", version: "1.0.0" }, {})
+
+  serverLog("info", "cube session open")
+  await client.connect(transport)
+
+  const callTool: CubeToolCaller = async (toolName, args) => {
+    const t0 = Date.now()
+    serverLog("info", `cube → ${toolName}`, JSON.stringify(args).slice(0, 200))
+    const result = await client.callTool({ name: toolName, arguments: args })
+    const parsed = parseContent(result.content as unknown[])
+    serverLog(
+      "info",
+      `cube ← ${toolName} (${Date.now() - t0}ms)`,
+      Array.isArray(parsed) ? `${parsed.length} rows` : typeof parsed
+    )
+    return parsed
+  }
+
+  try {
+    return await sessionStore.run(callTool, fn)
+  } finally {
+    await client.close()
+    serverLog("info", "cube session closed")
+  }
+}
+
+export async function callCubeTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+  const sessionCall = sessionStore.getStore()
+  if (sessionCall) return sessionCall(toolName, args)
+  return openOneOffConnection(toolName, args)
 }
 
 // ── Schema cache ─────────────────────────────────────────────────────────────
@@ -109,38 +158,25 @@ export async function loadSchema(): Promise<SchemaCache> {
     return _schemaCache
   }
 
-  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
-  const { SSEClientTransport } = await import("@modelcontextprotocol/sdk/client/sse.js")
-  const headers = await authHeaders()
-  const transport = new SSEClientTransport(new URL(MCP_URL), { requestInit: { headers } })
-  const client = new Client({ name: "bi-chat", version: "1.0.0" }, {})
+  const raw = await callCubeTool("cube_meta", {})
+  const text = typeof raw === "string" ? raw : JSON.stringify(raw)
+  const parsed = parseMcpText(text)
+  const schema =
+    parsed && typeof parsed === "object" && "cubes" in (parsed as object)
+      ? (parsed as { cubes: CubeInfo[] })
+      : { cubes: [] as CubeInfo[] }
+  const jsonStart = text.indexOf("\n{")
+  const cheatSheet = jsonStart > -1 ? text.slice(0, jsonStart).trim() : ""
 
-  await client.connect(transport)
-  try {
-    const result = await client.callTool({ name: "cube_meta", arguments: {} })
-    const text = (result.content as TextContent[])[0]?.text ?? ""
-    const parsed = parseMcpText(text)
-    const schema =
-      parsed && typeof parsed === "object" && "cubes" in (parsed as object)
-        ? (parsed as { cubes: CubeInfo[] })
-        : { cubes: [] as CubeInfo[] }
-    const jsonStart = text.indexOf("\n{")
-    const cheatSheet = jsonStart > -1 ? text.slice(0, jsonStart).trim() : ""
-
-    _schemaCache = {
-      cheatSheet,
-      cubes: schema.cubes,
-      fetchedAt: Date.now(),
-    }
-    return _schemaCache
-  } finally {
-    await client.close()
+  _schemaCache = {
+    cheatSheet,
+    cubes: schema.cubes,
+    fetchedAt: Date.now(),
   }
+  return _schemaCache
 }
 
 export function buildSchemaContext(schema: SchemaCache): string {
-  // Cap cheatSheet to 3000 chars — the full Seleric cube_meta preamble can be very large
-  // and will push Kimi-K2 over context limits when tool results are also in the context.
   const cheatSheet = schema.cheatSheet.length > 3000
     ? schema.cheatSheet.slice(0, 3000) + "\n… (truncated — use exploreSchema for details)"
     : schema.cheatSheet

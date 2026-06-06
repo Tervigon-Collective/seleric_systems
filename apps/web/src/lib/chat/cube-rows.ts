@@ -14,6 +14,13 @@ export function extractRows(raw: unknown): CubeRow[] {
   return []
 }
 
+/** Last cube error message from a string MCP response (for UI surfacing). */
+export function cubeErrorMessage(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const m = raw.match(/"error"\s*:\s*"([^"]+)"/)
+  return m?.[1] ?? raw.slice(0, 200)
+}
+
 /** Match Cube row keys when the model passes shorthand dim names. */
 export function resolveRowKey(row: CubeRow, dim: string): string | null {
   if (dim in row && row[dim] != null && row[dim] !== "") return dim

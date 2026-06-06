@@ -1,4 +1,6 @@
 import { wideRowToSlices } from "./transforms"
+import { cogsBreakdownFromRow } from "./cogs-breakdown"
+import { CHANNEL_NET_PROFIT_RECON_MEASURE } from "./channel-net-profit"
 
 export const CHANNEL_REVENUE_SLICES = [
   { label: "Meta", measure: "channel_pnl.meta_attributed_revenue_ex_gst" },
@@ -10,9 +12,10 @@ export const CHANNEL_NET_PROFIT_SERIES = [
   { label: "Meta", measure: "channel_pnl.meta_net_profit" },
   { label: "Google", measure: "channel_pnl.google_net_profit" },
   { label: "Organic", measure: "channel_pnl.organic_net_profit" },
+  { label: "Unattributed & ops", measure: CHANNEL_NET_PROFIT_RECON_MEASURE },
 ] as const
 
-/** marketing_performance funnel — link_clicks after impressions (not clicks). */
+/** Meta ad funnel — link_clicks after impressions. */
 export const FUNNEL_STEPS = [
   { label: "Impressions", measure: "marketing_performance.impressions" },
   { label: "Link clicks", measure: "marketing_performance.link_clicks" },
@@ -20,6 +23,11 @@ export const FUNNEL_STEPS = [
   { label: "Add to carts", measure: "marketing_performance.add_to_carts" },
   { label: "Initiated checkouts", measure: "marketing_performance.initiated_checkouts" },
   { label: "Purchases", measure: "marketing_performance.purchases" },
+] as const
+
+export const RETURN_CANCEL_SERIES = [
+  { label: "Returned", measure: "product_performance.returned_units" },
+  { label: "Cancelled", measure: "product_performance.cancelled_units" },
 ] as const
 
 export function channelRevenueSlices(row: Record<string, unknown>) {
@@ -33,19 +41,25 @@ export function funnelFromAggregate(row: Record<string, unknown>) {
   }))
 }
 
-/** P&L waterfall from period-aggregate daily_pnl row (canonical formula). */
+/** P&L waterfall from period-aggregate canonical_pnl row with COGS / ops cost breakdown. */
 export function pnlWaterfallSteps(row: Record<string, unknown>) {
-  const sales = Number(row["daily_pnl.total_sales_ex_gst"] ?? 0)
-  const cogs = Number(row["daily_pnl.total_cogs"] ?? 0)
-  const gross = Number(row["daily_pnl.gross_profit"] ?? 0)
-  const spend = Number(row["daily_pnl.total_ad_spend"] ?? 0)
-  const net = Number(row["daily_pnl.net_profit"] ?? 0)
+  const sales = Number(
+    row["canonical_pnl.net_revenue_excl_tax"] ?? row["daily_pnl.total_sales_ex_gst"] ?? 0
+  )
+  const gross = Number(row["canonical_pnl.gross_profit"] ?? row["daily_pnl.gross_profit"] ?? 0)
+  const spend = Number(row["canonical_pnl.total_ad_spend"] ?? row["daily_pnl.total_ad_spend"] ?? 0)
+  const net = Number(row["canonical_pnl.net_profit"] ?? row["daily_pnl.net_profit"] ?? 0)
+  const costs = cogsBreakdownFromRow(row)
 
   return [
-    { name: "Sales ex GST", value: sales, kind: "start" as const },
-    { name: "COGS", value: -cogs, kind: "delta" as const },
+    { name: "Net sales ex GST", value: sales, kind: "start" as const },
+    { name: "Product COGS", value: -costs.productCost, kind: "delta" as const, segment: "cogs" as const },
     { name: "Gross profit", value: gross, kind: "subtotal" as const },
     { name: "Ad spend", value: -spend, kind: "delta" as const },
+    { name: "Shipping", value: -costs.shippingCost, kind: "delta" as const, segment: "cogs" as const },
+    { name: "Packaging", value: -costs.packagingCost, kind: "delta" as const, segment: "cogs" as const },
+    { name: "Gateway fees", value: -costs.gatewayFees, kind: "delta" as const, segment: "cogs" as const },
+    { name: "RTO logistics", value: -costs.rtoCost, kind: "delta" as const, segment: "cogs" as const },
     { name: "Net profit", value: net, kind: "total" as const },
   ]
 }
@@ -53,7 +67,8 @@ export function pnlWaterfallSteps(row: Record<string, unknown>) {
 export function geoLabel(row: Record<string, unknown>) {
   const country = String(row["shopify_orders.ship_country"] ?? "")
   const province = String(row["shopify_orders.ship_province"] ?? "")
-  return province ? `${country} · ${province}` : country || "Unknown"
+  if (country && province) return `${country} · ${province}`
+  return country || province || "Unknown"
 }
 
 export function utmLabel(row: Record<string, unknown>) {
@@ -63,7 +78,7 @@ export function utmLabel(row: Record<string, unknown>) {
 }
 
 export function skuLabel(row: Record<string, unknown>) {
-  const sku = String(row["shopify_order_line_items.sku"] ?? row["product_performance.sku"] ?? "")
-  const title = String(row["shopify_order_line_items.product_title"] ?? row["product_performance.product_title"] ?? "")
+  const sku = String(row["product_performance.sku"] ?? "")
+  const title = String(row["product_performance.product_title"] ?? "")
   return title ? `${sku} · ${title}` : sku
 }

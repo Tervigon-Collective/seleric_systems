@@ -12,6 +12,25 @@ import { analyzeColumns } from "@/lib/chat/visualization/column-semantics"
 import type { CubeRow } from "@/lib/chat/visualization/column-semantics"
 import type { PeriodSummary } from "@/lib/chat/visualization"
 
+function derivePeriodLabel(rows: CubeRow[], dateKey: string | null): string | null {
+  if (!dateKey || !rows.length) return null
+  const dates = rows
+    .map((r) => String(r[dateKey] ?? "").slice(0, 10))
+    .filter((d) => /^\d{4}-\d{2}/.test(d))
+    .sort()
+  if (!dates.length) return null
+  const fmt = (d: string) => {
+    const dt = new Date(d)
+    return isNaN(dt.getTime())
+      ? d.slice(0, 7)
+      : dt.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+  }
+  const first = dates[0]
+  const last = dates[dates.length - 1]
+  if (first.slice(0, 7) === last.slice(0, 7)) return fmt(first)
+  return `${fmt(first)} – ${fmt(last)}`
+}
+
 function KpiTile({
   label,
   value,
@@ -113,10 +132,13 @@ export function buildKpiTiles(summary: PeriodSummary, seriesRows: CubeRow[]) {
 
   if (grossProfit && revenue && revenue.val) {
     const margin = ((grossProfit.val ?? 0) / revenue.val) * 100
+    const isImpossible = margin > 100 || margin < -100
     tiles.push({
       label: "Gross margin (avg)",
-      value: `${margin.toFixed(1)}%`,
-      className: "text-stone-900 dark:text-night-50",
+      value: isImpossible ? `⚠ ${margin.toFixed(1)}%` : `${margin.toFixed(1)}%`,
+      className: isImpossible
+        ? "text-red-600 dark:text-red-400"
+        : "text-stone-900 dark:text-night-50",
     })
   }
 
@@ -136,18 +158,21 @@ export function buildKpiTiles(summary: PeriodSummary, seriesRows: CubeRow[]) {
     })
   }
 
+  // Only show "best month" when there are multiple time points — meaningless for a single period.
   const profitKey = profile.columns.find((c) => c.metricRole === "profit" && /net/i.test(c.key))?.key
-  const best = bestMonthLabel(seriesRows, profile.dateKey, profitKey ?? null)
-  if (best && netProfit) {
-    const bestRow = [...seriesRows].sort(
-      (a, b) => Number(b[profitKey ?? ""] ?? 0) - Number(a[profitKey ?? ""] ?? 0)
-    )[0]
-    const bestVal = Number(bestRow?.[profitKey ?? ""] ?? 0)
-    tiles.push({
-      label: `Best month (net)`,
-      value: `${best} ${formatInr(bestVal, { signed: true })}`,
-      className: bestVal >= 0 ? "text-insight-positive" : "text-insight-negative",
-    })
+  if (seriesRows.length >= 2 && netProfit) {
+    const best = bestMonthLabel(seriesRows, profile.dateKey, profitKey ?? null)
+    if (best) {
+      const bestRow = [...seriesRows].sort(
+        (a, b) => Number(b[profitKey ?? ""] ?? 0) - Number(a[profitKey ?? ""] ?? 0)
+      )[0]
+      const bestVal = Number(bestRow?.[profitKey ?? ""] ?? 0)
+      tiles.push({
+        label: `Best month (net)`,
+        value: `${best} ${formatInr(bestVal, { signed: true })}`,
+        className: bestVal >= 0 ? "text-insight-positive" : "text-insight-negative",
+      })
+    }
   }
 
   return tiles.slice(0, 11)
@@ -166,8 +191,16 @@ export function KpiSummaryGrid({
 
   if (!tiles.length) return null
 
+  const profile = analyzeColumns(seriesRows)
+  const periodLabel = derivePeriodLabel(seriesRows, profile.dateKey)
+
   return (
     <div className="rounded-xl bg-insight-canvas dark:bg-night-900 border border-insight-border dark:border-night-800 p-4 my-3">
+      {periodLabel && (
+        <p className="text-[11px] font-sans text-stone-400 dark:text-night-600 uppercase tracking-widest mb-3">
+          {periodLabel}
+        </p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map((t) => (
           <KpiTile key={t.label} label={t.label} value={t.value} className={t.className} />

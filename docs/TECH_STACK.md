@@ -111,7 +111,7 @@ ANTHROPIC_API_KEY=sk-ant-...         # if using Anthropic
 
 # ── MCP Connectors ──────────────────────────────────
 PIPEBOARD_TOKEN=...            # Pipeboard MCP auth
-SELERIC_MCP_URL=https://mcp.seleric.com/sse
+SELERIC_MCP_URL=https://mcp.seleric.com/serve/sse
 SELERIC_API_KEY=...
 
 # ── Data Sources ────────────────────────────────────

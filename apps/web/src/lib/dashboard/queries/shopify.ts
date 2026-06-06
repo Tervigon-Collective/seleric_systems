@@ -1,7 +1,9 @@
 import "server-only"
 
-import { runCubeQuery } from "../cube-query"
-import { toCubeDateRange, type DashboardDateRange } from "../date-ranges"
+import { type DashboardBrandFilter } from "../brand-filter"
+import { safeCubeQuery, runDashboardCubeFetch } from "../cube-query"
+import { type DashboardDateRange } from "../date-ranges"
+import { q, td } from "../query-helpers"
 
 export interface ShopifyDashboardData {
   revenueOrdersDaily: Record<string, unknown>[]
@@ -16,141 +18,200 @@ export interface ShopifyDashboardData {
   shippingRevenue: Record<string, unknown>[]
 }
 
-function td(dim: string, range: DashboardDateRange, granularity?: "day") {
-  return { dimension: dim, ...(granularity ? { granularity } : {}), dateRange: toCubeDateRange(range) }
+async function safeQuery(
+  cube: string,
+  brand: DashboardBrandFilter,
+  query: Record<string, unknown>,
+  label: string
+) {
+  return safeCubeQuery(q(cube, brand, query), label)
 }
 
-async function safeQuery(query: Parameters<typeof runCubeQuery>[0], label: string): Promise<Record<string, unknown>[]> {
-  try {
-    return await runCubeQuery(query)
-  } catch (e) {
-    console.error(`[shopify] query failed: ${label}`, e)
-    return []
-  }
-}
+export async function fetchShopifyDashboardData(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter
+): Promise<ShopifyDashboardData> {
+  return runDashboardCubeFetch(async () => {
+    const [
+      revenueOrdersDaily,
+      topProducts,
+      returnCancel,
+      revenueByGeo,
+      utmBreakdown,
+      discountImpact,
+      unitsPerOrder,
+      fulfillmentMix,
+      marginBySku,
+      shippingRevenue,
+    ] = await Promise.all([
+      safeQuery(
+        "shopify_orders",
+        brand,
+        {
+          measures: [
+            "shopify_orders.gross_revenue",
+            "shopify_orders.net_sales_ex_gst",
+            "shopify_orders.net_orders",
+            "shopify_orders.aov",
+          ],
+          timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
+          order: { "shopify_orders.created_at_ist": "asc" },
+        },
+        "revenueOrdersDaily"
+      ),
+      safeQuery(
+        "product_performance",
+        brand,
+        {
+          dimensions: ["product_performance.product_title"],
+          measures: [
+            "product_performance.gross_line_revenue_ex_gst",
+            "product_performance.net_line_revenue_ex_gst",
+            "product_performance.total_quantity",
+            "product_performance.gross_profit_ex_gst",
+            "product_performance.total_cogs",
+          ],
+          timeDimensions: [td("product_performance.created_at_ist", range)],
+          order: { "product_performance.net_line_revenue_ex_gst": "desc" },
+          limit: 15,
+        },
+        "topProducts"
+      ),
+      safeQuery(
+        "product_performance",
+        brand,
+        {
+          dimensions: ["product_performance.product_title"],
+          measures: [
+            "product_performance.returned_units",
+            "product_performance.cancelled_units",
+            "product_performance.total_quantity",
+            "product_performance.total_line_discounts",
+          ],
+          timeDimensions: [td("product_performance.created_at_ist", range)],
+          order: { "product_performance.returned_units": "desc" },
+          limit: 20,
+        },
+        "returnCancel"
+      ),
+      safeQuery(
+        "shopify_orders",
+        brand,
+        {
+          dimensions: ["shopify_orders.ship_country", "shopify_orders.ship_province"],
+          measures: ["shopify_orders.gross_revenue", "shopify_orders.net_orders", "shopify_orders.aov"],
+          timeDimensions: [td("shopify_orders.created_at_ist", range)],
+          order: { "shopify_orders.gross_revenue": "desc" },
+          limit: 50,
+        },
+        "revenueByGeo"
+      ),
+      safeQuery(
+        "shopify_orders",
+        brand,
+        {
+          dimensions: [
+            "shopify_orders.utm_source",
+            "shopify_orders.utm_medium",
+            "shopify_orders.utm_campaign",
+          ],
+          measures: ["shopify_orders.gross_revenue", "shopify_orders.net_orders", "shopify_orders.aov"],
+          timeDimensions: [td("shopify_orders.created_at_ist", range)],
+          order: { "shopify_orders.gross_revenue": "desc" },
+          limit: 30,
+        },
+        "utmBreakdown"
+      ),
+      safeQuery(
+        "shopify_order_line_items",
+        brand,
+        {
+          measures: [
+            "shopify_order_line_items.total_line_discounts",
+            "shopify_order_line_items.net_line_revenue_ex_gst",
+            "shopify_order_line_items.gross_profit_ex_gst",
+            "shopify_order_line_items.total_cogs",
+            "shopify_order_line_items.avg_unit_price",
+            "shopify_order_line_items.avg_discounted_unit_price",
+          ],
+          timeDimensions: [td("shopify_order_line_items.created_at_ist", range, "day")],
+          order: { "shopify_order_line_items.created_at_ist": "asc" },
+        },
+        "discountImpact"
+      ),
+      safeQuery(
+        "shopify_order_line_items",
+        brand,
+        {
+          measures: [
+            "shopify_order_line_items.units_per_order",
+            "shopify_order_line_items.avg_unit_price",
+            "shopify_order_line_items.avg_discounted_unit_price",
+            "shopify_order_line_items.unique_products",
+          ],
+          timeDimensions: [td("shopify_order_line_items.created_at_ist", range, "day")],
+          order: { "shopify_order_line_items.created_at_ist": "asc" },
+        },
+        "unitsPerOrder"
+      ),
+      safeQuery(
+        "shopify_orders",
+        brand,
+        {
+          dimensions: ["shopify_orders.fulfillment_status"],
+          measures: ["shopify_orders.orders", "shopify_orders.gross_revenue"],
+          timeDimensions: [td("shopify_orders.created_at_ist", range)],
+          order: { "shopify_orders.orders": "desc" },
+        },
+        "fulfillmentMix"
+      ),
+      safeQuery(
+        "product_performance",
+        brand,
+        {
+          dimensions: ["product_performance.sku", "product_performance.product_title"],
+          measures: [
+            "product_performance.gross_profit_ex_gst",
+            "product_performance.total_cogs",
+            "product_performance.net_line_revenue_ex_gst",
+            "product_performance.avg_unit_price",
+            "product_performance.avg_discounted_unit_price",
+            "product_performance.total_quantity",
+          ],
+          timeDimensions: [td("product_performance.created_at_ist", range)],
+          order: { "product_performance.gross_profit_ex_gst": "desc" },
+          limit: 20,
+        },
+        "marginBySku"
+      ),
+      safeQuery(
+        "shopify_orders",
+        brand,
+        {
+          measures: [
+            "shopify_orders.gross_revenue",
+            "shopify_orders.shipping_revenue",
+            "shopify_orders.net_sales_ex_gst",
+            "shopify_orders.orders_with_shipping",
+          ],
+          timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
+          order: { "shopify_orders.created_at_ist": "asc" },
+        },
+        "shippingRevenue"
+      ),
+    ])
 
-export async function fetchShopifyDashboardData(range: DashboardDateRange): Promise<ShopifyDashboardData> {
-  const [
-    revenueOrdersDaily,
-    topProducts,
-    returnCancel,
-    revenueByGeo,
-    utmBreakdown,
-    discountImpact,
-    unitsPerOrder,
-    fulfillmentMix,
-    marginBySku,
-    shippingRevenue,
-  ] = await Promise.all([
-    safeQuery({
-      measures: [
-        "shopify_orders.gross_revenue",
-        "shopify_orders.net_orders",
-        "shopify_orders.aov",
-      ],
-      timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
-      order: { "shopify_orders.created_at_ist": "asc" },
-    }, "revenueOrdersDaily"),
-    // product_performance + product dimensions = nested aggregate error in Cube.
-    // Use shopify_order_line_items.total_quantity (only safe product-dimension measure).
-    safeQuery({
-      dimensions: ["shopify_order_line_items.product_title"],
-      measures: ["shopify_order_line_items.total_quantity"],
-      timeDimensions: [td("shopify_order_line_items.created_at_ist", range)],
-      order: { "shopify_order_line_items.total_quantity": "desc" },
-      limit: 15,
-    }, "topProducts"),
-    safeQuery({
-      measures: [
-        "shopify_orders.return_rate",
-        "shopify_orders.returned_orders",
-        "shopify_orders.net_orders",
-      ],
-      timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
-      order: { "shopify_orders.created_at_ist": "asc" },
-    }, "returnCancel"),
-    safeQuery({
-      dimensions: ["shopify_orders.ship_country", "shopify_orders.ship_province"],
-      measures: [
-        "shopify_orders.gross_revenue",
-        "shopify_orders.net_orders",
-        "shopify_orders.aov",
-      ],
-      timeDimensions: [td("shopify_orders.created_at_ist", range)],
-      order: { "shopify_orders.gross_revenue": "desc" },
-      limit: 50,
-    }, "revenueByGeo"),
-    safeQuery({
-      dimensions: [
-        "shopify_orders.utm_source",
-        "shopify_orders.utm_medium",
-        "shopify_orders.utm_campaign",
-      ],
-      measures: [
-        "shopify_orders.gross_revenue",
-        "shopify_orders.net_orders",
-        "shopify_orders.aov",
-      ],
-      timeDimensions: [td("shopify_orders.created_at_ist", range)],
-      order: { "shopify_orders.gross_revenue": "desc" },
-      limit: 30,
-    }, "utmBreakdown"),
-    safeQuery({
-      measures: [
-        "shopify_order_line_items.total_line_discounts",
-        "shopify_order_line_items.net_line_revenue_ex_gst",
-        "shopify_order_line_items.avg_unit_price",
-        "shopify_order_line_items.avg_discounted_unit_price",
-      ],
-      timeDimensions: [td("shopify_order_line_items.created_at_ist", range, "day")],
-      order: { "shopify_order_line_items.created_at_ist": "asc" },
-    }, "discountImpact"),
-    safeQuery({
-      measures: [
-        "shopify_order_line_items.units_per_order",
-        "shopify_order_line_items.avg_unit_price",
-        "shopify_order_line_items.avg_discounted_unit_price",
-        "shopify_order_line_items.unique_products",
-      ],
-      timeDimensions: [td("shopify_order_line_items.created_at_ist", range, "day")],
-      order: { "shopify_order_line_items.created_at_ist": "asc" },
-    }, "unitsPerOrder"),
-    safeQuery({
-      dimensions: ["shopify_orders.fulfillment_status"],
-      measures: ["shopify_orders.orders", "shopify_orders.gross_revenue"],
-      timeDimensions: [td("shopify_orders.created_at_ist", range)],
-      order: { "shopify_orders.orders": "desc" },
-    }, "fulfillmentMix"),
-    // product_performance + sku/product_title dimensions also hit nested aggregate.
-    // Use shopify_order_line_items with sku + product_title (only quantity is safe).
-    safeQuery({
-      dimensions: ["shopify_order_line_items.sku", "shopify_order_line_items.product_title"],
-      measures: ["shopify_order_line_items.total_quantity"],
-      timeDimensions: [td("shopify_order_line_items.created_at_ist", range)],
-      order: { "shopify_order_line_items.total_quantity": "desc" },
-      limit: 20,
-    }, "marginBySku"),
-    safeQuery({
-      measures: [
-        "shopify_orders.gross_revenue",
-        "shopify_orders.shipping_revenue",
-        "shopify_orders.orders_with_shipping",
-      ],
-      timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
-      order: { "shopify_orders.created_at_ist": "asc" },
-    }, "shippingRevenue"),
-  ])
-
-  return {
-    revenueOrdersDaily,
-    topProducts,
-    returnCancel,
-    revenueByGeo,
-    utmBreakdown,
-    discountImpact,
-    unitsPerOrder,
-    fulfillmentMix,
-    marginBySku,
-    shippingRevenue,
-  }
+    return {
+      revenueOrdersDaily,
+      topProducts,
+      returnCancel,
+      revenueByGeo,
+      utmBreakdown,
+      discountImpact,
+      unitsPerOrder,
+      fulfillmentMix,
+      marginBySku,
+      shippingRevenue,
+    }
+  })
 }

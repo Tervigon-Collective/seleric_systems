@@ -23,7 +23,7 @@ export function getPnlInstructions(schema: SchemaCache): string {
 
 ## Derived metrics (not Cube measures — compute after fetch)
 - **CAC** = total_ad_spend ÷ total_orders for the period (field keys: ${spendField} and ${ordersField})
-- **LTV** is NOT in the semantic layer. Say so clearly. Offer AOV as a proxy only if the user accepts it.
+- **LTV** is not a stored field — the UI auto-derives **Est. LTV ≈ AOV × gross margin % × 1.4** per period and shows it in the KPI strip. This is an approximation, NOT cohort-based repeat revenue. If the user asks about LTV accuracy, flag it as a rough proxy; do not say LTV doesn't exist.
 
 ## When to use which P&L tool
 - Period total or daily chart → getDailyPnl (groupByDay=false or true)

@@ -9,6 +9,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts"
 import {
   CHART_COLORS,
@@ -60,12 +61,14 @@ export function StackedAreaChart({ rows, series }: Props) {
           minTickGap={timeAxisMinTickGap(data.length)}
         />
         <YAxis
+          domain={["auto", "auto"]}
           tickFormatter={fmtCurrency}
           tick={{ fill: ct.tick, fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={62}
         />
+        <ReferenceLine y={0} stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
           formatter={(v: number) => fmtCurrency(v)}
           contentStyle={ct.tooltip}

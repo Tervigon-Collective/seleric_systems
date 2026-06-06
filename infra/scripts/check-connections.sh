@@ -75,7 +75,7 @@ echo "Seleric MCP (Cube)"
 if [ -n "${SELERIC_API_KEY:-}" ]; then
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "Authorization: Bearer $SELERIC_API_KEY" \
-    "${SELERIC_MCP_URL:-https://mcp.seleric.com/sse}" 2>/dev/null || echo "000")
+    "${SELERIC_MCP_URL:-https://mcp.seleric.com/serve/sse}" 2>/dev/null || echo "000")
   [ "$STATUS" = "200" ] && ok "Seleric MCP reachable" || fail "Seleric MCP failed (HTTP $STATUS)"
 else
   skip "SELERIC_API_KEY not set"

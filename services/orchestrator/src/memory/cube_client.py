@@ -43,7 +43,7 @@ _EMPTY_METRICS: dict[str, Any] = {
 
 
 def _mcp_url() -> str:
-    return os.getenv("CUBE_MCP_URL", "https://mcp.seleric.com/sse")
+    return os.getenv("CUBE_MCP_URL") or os.getenv("SELERIC_MCP_URL", "https://mcp.seleric.com/serve/sse")
 
 
 def _auth_headers() -> dict[str, str]:

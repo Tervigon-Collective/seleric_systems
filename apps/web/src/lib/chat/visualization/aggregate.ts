@@ -25,8 +25,14 @@ export function aggregatePeriod(rows: CubeRow[]): PeriodSummary {
     }
   }
 
-  // Re-derive period-level CAC/LTV
-  const periodRow = deriveRowMetrics(summary as CubeRow)
+  // Re-derive period-level CAC/LTV from summed base metrics.
+  // The loop above may have averaged per-row derived.cac values — clear them
+  // so deriveRowMetrics recomputes from the correct summed spend ÷ summed orders.
+  const summaryForDerive: CubeRow = { ...summary }
+  delete summaryForDerive["derived.cac"]
+  delete summaryForDerive["derived.ltv_estimate"]
+  delete summaryForDerive["derived.ltv_cac"]
+  const periodRow = deriveRowMetrics(summaryForDerive)
   for (const [k, v] of Object.entries(periodRow)) {
     if (k.startsWith("derived.")) summary[k] = v as number
   }

@@ -589,7 +589,7 @@ Chat route and models:
 
 Cube:
 
-- `CUBE_MCP_URL`: Seleric MCP SSE URL. Defaults to `https://mcp.seleric.com/sse`.
+- `CUBE_MCP_URL`: Seleric MCP SSE URL. Defaults to `https://mcp.seleric.com/serve/sse`.
 - `SELERIC_API_KEY`: bearer token for Seleric MCP.
 - `CUBEJS_API_SECRET`: fallback auth path that builds a short-lived JWT.
 

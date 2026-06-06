@@ -9,6 +9,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts"
 import {
   CHART_COLORS,
@@ -65,12 +66,14 @@ export function GroupedBarChart({ rows }: Props) {
           minTickGap={timeAxisMinTickGap(data.length)}
         />
         <YAxis
+          domain={["auto", "auto"]}
           tickFormatter={useCount ? fmtCount : fmtCurrency}
           tick={{ fill: ct.tick, fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={62}
         />
+        <ReferenceLine y={0} stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
           contentStyle={ct.tooltip}
           formatter={(v: number, name: string) => [useCount ? fmtCount(v) : fmtCurrency(v), name]}

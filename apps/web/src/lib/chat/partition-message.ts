@@ -76,6 +76,7 @@ export type PartitionedAssistantMessage = {
   narrativeParts: string[]
   mergedData: ReturnType<typeof mergeToolOutputs>
   hasToolActivity: boolean
+  hasPendingTools: boolean
   clarifyPrompt: ClarifyPrompt | null
 }
 
@@ -94,12 +95,10 @@ export function partitionAssistantMessage(msg: UIMessage): PartitionedAssistantM
       const text = part.text?.trim() ?? ""
       if (!text) continue
 
-      // A tool has appeared earlier in this message — any short text is inter-step narration.
-      const prevToolExists = msg.parts.slice(0, i).some(isToolUIPart)
+      // Only suppress text that appears immediately before another tool call.
+      // Text after the final tool is always user-facing analysis — never hide it.
       const nextIsTool = msg.parts.slice(i + 1).some(isToolUIPart)
-      // Treat as CoT narration when a tool comes next OR when we're mid-stream between steps
-      // (prevToolExists means we already have schema/query steps behind us)
-      if (isCoTNarration(text, nextIsTool || prevToolExists)) {
+      if (isCoTNarration(text, nextIsTool)) {
         pendingNarration = text
       } else {
         narrativeParts.push(part.text)
@@ -157,26 +156,46 @@ export function partitionAssistantMessage(msg: UIMessage): PartitionedAssistantM
     const other = cotSteps.filter((s) => s.toolName !== "exploreSchema")
     const allDone = schemaSteps.every((s) => s.state === "done")
     const anyError = schemaSteps.some((s) => s.state === "error")
+    const errorTexts = schemaSteps
+      .filter((s) => s.state === "error" && s.errorText)
+      .map((s) => s.errorText)
+      .filter(Boolean) as string[]
+
+    const groupedStep: CotStep = {
+      id: "schema-group",
+      toolName: "exploreSchema",
+      label: `Used ${schemaSteps.length} tools`,
+      detail: "",
+      narration:
+        pendingNarration ||
+        "Explored schema and ran queries to assemble the full picture.",
+      state: anyError ? "error" : allDone ? "done" : "running",
+      errorText: errorTexts.length ? errorTexts.join("; ") : undefined,
+    }
+
+    // Place the grouped step at the position of the first schema step so the
+    // step list reflects the actual order of operations (schema first, then data fetches).
+    const firstSchemaIdx = cotSteps.findIndex((s) => s.toolName === "exploreSchema")
+    const stepsBeforeSchema = cotSteps
+      .slice(0, firstSchemaIdx)
+      .filter((s) => s.toolName !== "exploreSchema").length
+
     finalSteps = [
-      ...other,
-      {
-        id: "schema-group",
-        toolName: "exploreSchema",
-        label: `Used ${schemaSteps.length} tools`,
-        detail: "",
-        narration:
-          pendingNarration ||
-          "Explored schema and ran queries to assemble the full picture.",
-        state: anyError ? "error" : allDone ? "done" : "running",
-      },
+      ...other.slice(0, stepsBeforeSchema),
+      groupedStep,
+      ...other.slice(stepsBeforeSchema),
     ]
   }
+
+  // Check if there are any running tools
+  const hasPendingTools = finalSteps.some((s) => s.state === "running")
 
   return {
     cotSteps: finalSteps,
     narrativeParts,
     mergedData: mergeToolOutputs(toolOutputs),
     hasToolActivity: cotSteps.length > 0,
+    hasPendingTools,
     clarifyPrompt,
   }
 }

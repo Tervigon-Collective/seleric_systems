@@ -8,6 +8,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts"
 import { CHART_COLORS, fmtCurrency } from "./format"
 import type { NamedValue } from "@/lib/dashboard/transforms"
@@ -39,12 +40,14 @@ export function ComparisonBarChart({ items }: Props) {
           height={56}
         />
         <YAxis
+          domain={["auto", "auto"]}
           tickFormatter={fmtCurrency}
           tick={{ fill: ct.tick, fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           width={62}
         />
+        <ReferenceLine y={0} stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
           formatter={(v: number) => fmtCurrency(v)}
           contentStyle={ct.tooltip}
