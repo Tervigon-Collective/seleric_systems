@@ -6,6 +6,7 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart"
 import { NeuroTagLeaderboard } from "@/components/charts/NeuroTagLeaderboard"
 import { AdPerformanceTable, parseAdLeaderboard } from "@/components/charts/AdPerformanceTable"
 import { AdsFunnelView } from "@/components/charts/AdsFunnelView"
+import { TagStageHeatmap } from "@/components/charts/TagStageHeatmap"
 import { VideoFunnelPanel } from "@/components/charts/VideoFunnelPanel"
 import { TrendChart } from "@/components/chat/TrendChart"
 import type { ScoredTag } from "@/lib/dashboard/neurotag-scorer"
@@ -29,6 +30,8 @@ interface Props {
   funnelAdRows: Record<string, unknown>[]
   funnelTotals: Record<string, unknown>[]
   funnelTagMap: Record<string, unknown>[]
+  funnelCategoryStage: Record<string, unknown>[]
+  funnelAdAttribution: Record<string, unknown>[]
   start: string
   end: string
   brand: number
@@ -44,6 +47,8 @@ export function CreativeIQTabs({
   funnelAdRows,
   funnelTotals,
   funnelTagMap,
+  funnelCategoryStage,
+  funnelAdAttribution,
   start,
   end,
   brand,
@@ -86,7 +91,20 @@ export function CreativeIQTabs({
             adRows={funnelAdRows}
             funnelTotals={funnelTotals}
             adTagMap={funnelTagMap}
+            adAttribution={funnelAdAttribution}
           />
+        </ChartCard>
+      )}
+
+      {/* Neuro-tag × stage heatmap (under the funnel) */}
+      {activeTab === "funnel" && (
+        <ChartCard
+          title="Neuro category × funnel stage — lift heatmap"
+          subtitle="Which psychological frames over- or under-index at each stage (spend-weighted vs average)"
+          cube="meta_neurotag_analysis"
+          className="xl:col-span-2"
+        >
+          <TagStageHeatmap categoryStage={funnelCategoryStage} />
         </ChartCard>
       )}
 

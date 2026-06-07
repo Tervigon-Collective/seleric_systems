@@ -5,7 +5,11 @@ import { fmtCurrency, fmtCount, fmtPct } from "./format"
 import {
   analyzeStage,
   buildFunnelTotals,
+  classifyAds,
   parseAdFunnelRows,
+  sumRealTotals,
+  AD_LABEL_META,
+  type AdLabel,
   type FunnelStage,
   type ScoredAd,
   type ScoredStageTag,
@@ -45,11 +49,14 @@ interface Props {
   adRows: Record<string, unknown>[]
   funnelTotals: Record<string, unknown>[]
   adTagMap: Record<string, unknown>[]
+  adAttribution: Record<string, unknown>[]
 }
 
-export function AdsFunnelView({ adRows, funnelTotals, adTagMap }: Props) {
-  const ads = useMemo(() => parseAdFunnelRows(adRows, adTagMap), [adRows, adTagMap])
-  const totals = useMemo(() => buildFunnelTotals(funnelTotals[0], ads), [funnelTotals, ads])
+export function AdsFunnelView({ adRows, funnelTotals, adTagMap, adAttribution }: Props) {
+  const ads = useMemo(() => parseAdFunnelRows(adRows, adTagMap, adAttribution), [adRows, adTagMap, adAttribution])
+  const realTotals = useMemo(() => sumRealTotals(adAttribution), [adAttribution])
+  const totals = useMemo(() => buildFunnelTotals(funnelTotals[0], ads, realTotals), [funnelTotals, ads, realTotals])
+  const labelsByAd = useMemo(() => classifyAds(ads), [ads])
 
   const gapKey = totals.stages.find((s) => s.isGap)?.key ?? "v3s"
   const [selected, setSelected] = useState<string>(gapKey)
@@ -68,21 +75,30 @@ export function AdsFunnelView({ adRows, funnelTotals, adTagMap }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Audience summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* Audience summary + real (warehouse) attribution */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Reach", value: fmtCount(totals.reach), sub: "unique accounts" },
           { label: "Impressions", value: fmtCount(totals.impressions), sub: "total shown" },
           { label: "Frequency", value: `${totals.frequency.toFixed(2)}×`, sub: "impr / reach" },
-          { label: "CPM", value: fmtCurrency(totals.cpm), sub: "per 1k impr" },
           { label: "Spend", value: fmtCurrency(totals.spend), sub: "period total" },
+          { label: "Orders", value: fmtCount(totals.realOrders), sub: "attributed (last-touch)", real: true },
+          { label: "Revenue", value: fmtCurrency(totals.realRevenue), sub: "attributed, ex-GST", real: true },
+          { label: "ROAS", value: `${totals.realRoas.toFixed(2)}×`, sub: "attributed rev / spend", real: true, roas: totals.realRoas },
+          { label: "CPM", value: fmtCurrency(totals.cpm), sub: "per 1k impr" },
         ].map((k) => (
           <div
             key={k.label}
-            className="rounded-lg border border-stone-200 dark:border-night-800 bg-stone-50 dark:bg-night-900 px-3 py-2"
+            className={`rounded-lg border px-3 py-2 ${
+              k.real
+                ? "border-emerald-500/25 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06]"
+                : "border-stone-200 dark:border-night-800 bg-stone-50 dark:bg-night-900"
+            }`}
           >
             <p className="text-[10px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{k.label}</p>
-            <p className="text-sm font-semibold text-stone-800 dark:text-night-100 tabular-nums">{k.value}</p>
+            <p className={`text-sm font-semibold tabular-nums ${
+              k.roas !== undefined ? roasCls(k.roas) : "text-stone-800 dark:text-night-100"
+            }`}>{k.value}</p>
             <p className="text-[10px] text-stone-400 dark:text-night-600">{k.sub}</p>
           </div>
         ))}
@@ -104,7 +120,9 @@ export function AdsFunnelView({ adRows, funnelTotals, adTagMap }: Props) {
           ))}
           <p className="text-[10px] text-stone-400 dark:text-night-600 pt-1">
             Bar width = % of impressions · right value = step pass-rate vs previous stage ·
-            <span className="text-red-400"> red</span> = biggest video drop-off
+            <span className="text-red-400"> red</span> = biggest video drop-off.
+            Ad-delivery + creative stages · <span className="text-emerald-600 dark:text-emerald-500">Orders = our warehouse attribution</span> (no Meta pixel).
+            On-site conversion (LPV→ATC→Checkout) lives in the PDP funnel module.
           </p>
         </div>
 
@@ -118,6 +136,7 @@ export function AdsFunnelView({ adRows, funnelTotals, adTagMap }: Props) {
               weak={analysis.weak}
               tags={analysis.tags}
               weakTags={analysis.weakTags}
+              labelsByAd={labelsByAd}
             />
           ) : (
             <p className="text-sm text-stone-400 dark:text-night-600">Select a stage.</p>
@@ -165,7 +184,9 @@ function FunnelBar({
         </div>
         <span
           className={`text-[10px] w-12 text-right shrink-0 tabular-nums ${
-            stage.isGap ? "text-red-400 font-semibold" : "text-stone-400 dark:text-night-600"
+            stage.isGap
+              ? "text-red-400 font-semibold"
+              : "text-stone-400 dark:text-night-600"
           }`}
         >
           {stage.kind === "audience" && stage.key === "reach" ? "—" : `${stage.pctOfPrev.toFixed(0)}%`}
@@ -182,6 +203,7 @@ function StageDetail({
   weak,
   tags,
   weakTags,
+  labelsByAd,
 }: {
   stage: FunnelStage
   isRateStage: boolean
@@ -189,6 +211,7 @@ function StageDetail({
   weak: ScoredAd[]
   tags: ScoredStageTag[]
   weakTags: ScoredStageTag[]
+  labelsByAd: Map<string, AdLabel[]>
 }) {
   return (
     <div className="space-y-4">
@@ -221,12 +244,14 @@ function StageDetail({
           accent="emerald"
           ads={strong}
           isRateStage={isRateStage}
+          labelsByAd={labelsByAd}
         />
         <AdColumn
           title={isRateStage ? "Didn't work — spend, weak pass-through" : "Lowest efficiency"}
           accent="red"
           ads={weak}
           isRateStage={isRateStage}
+          labelsByAd={labelsByAd}
         />
       </div>
 
@@ -267,11 +292,13 @@ function AdColumn({
   accent,
   ads,
   isRateStage,
+  labelsByAd,
 }: {
   title: string
   accent: "emerald" | "red"
   ads: ScoredAd[]
   isRateStage: boolean
+  labelsByAd: Map<string, AdLabel[]>
 }) {
   const dot = accent === "emerald" ? "bg-emerald-500" : "bg-red-500"
   return (
@@ -284,7 +311,8 @@ function AdColumn({
         <p className="text-xs text-stone-400 dark:text-night-600">No qualifying ads.</p>
       ) : (
         <div className="space-y-1.5">
-          {ads.map((s) => (
+          {ads.map((s) => {
+            return (
             <div
               key={s.ad.ad_id}
               className="rounded-md border border-stone-100 dark:border-night-850 bg-stone-50/60 dark:bg-night-900 px-2 py-1.5"
@@ -301,10 +329,36 @@ function AdColumn({
                 <p className="text-[10px] text-stone-400 dark:text-night-600 truncate" title={s.ad.campaign_name}>
                   {s.ad.campaign_name}
                 </p>
-                <span className="text-[10px] tabular-nums shrink-0 text-stone-400 dark:text-night-600">
+                <span
+                  className="text-[10px] tabular-nums shrink-0 text-stone-400 dark:text-night-600"
+                  title="Spend · real ROAS (warehouse-attributed revenue ÷ spend)"
+                >
                   {fmtCurrency(s.ad.spend)} · <span className={roasCls(s.ad.roas)}>{s.ad.roas.toFixed(2)}×</span>
                 </span>
               </div>
+              <div
+                className="flex items-center justify-between gap-2 mt-0.5 text-[10px] tabular-nums"
+                title="Ad-level warehouse attribution (last-touch) — true orders & net revenue for this ad"
+              >
+                <span className="text-emerald-600/80 dark:text-emerald-500/80">
+                  {fmtCount(s.ad.orders)} orders
+                </span>
+                <span className="text-stone-400 dark:text-night-600">
+                  {fmtCurrency(s.ad.purchase_value)} attributed
+                </span>
+              </div>
+              {(labelsByAd.get(s.ad.ad_id)?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {labelsByAd.get(s.ad.ad_id)!.map((lb) => (
+                    <span
+                      key={lb}
+                      className={`inline-block px-1 py-0.5 rounded border text-[8px] font-medium ${AD_LABEL_META[lb].cls}`}
+                    >
+                      {AD_LABEL_META[lb].label}
+                    </span>
+                  ))}
+                </div>
+              )}
               {s.ad.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {s.ad.tags.slice(0, 4).map((t) => (
@@ -322,7 +376,8 @@ function AdColumn({
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

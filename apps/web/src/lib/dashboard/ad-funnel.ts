@@ -3,6 +3,7 @@
 
 const AP = "meta_ad_performance"
 const NT = "meta_neurotag_analysis"
+const OA = "order_attribution"
 
 function n(v: unknown): number {
   const x = Number(v ?? 0)
@@ -30,13 +31,20 @@ export const STAGES: StageDef[] = [
   { key: "v50",         label: "50% Viewed",  field: "video_p50",   prev: "v25",         kind: "video",    hint: "mid-video retention" },
   { key: "v75",         label: "75% Viewed",  field: "video_p75",   prev: "v50",         kind: "video",    hint: "deep retention" },
   { key: "v100",        label: "100% Viewed", field: "video_p100",  prev: "v75",         kind: "video",    hint: "watched to the end" },
-  { key: "thruplay",    label: "Thruplay",    field: "thruplay",    prev: "v100",        kind: "video",    hint: "15s+ / completed plays" },
+  // Thruplay = 15s-or-complete plays. NOT downstream of 100%-viewed (a sub-15s video
+  // completes before "100%" of a longer one), so anchor it to 3s views — a clean ≤100%
+  // share of scroll-stoppers — instead of producing a meaningless >600% step.
+  { key: "thruplay",    label: "Thruplay",    field: "thruplay",    prev: "v3s",         kind: "video",    hint: "15s+/complete plays · share of 3s views (not a sequential step)" },
   { key: "linkclick",   label: "Link Click",  field: "link_clicks", prev: "impressions", kind: "convert",  hint: "clicked through (CTR)" },
-  { key: "order",       label: "Order",       field: "orders",      prev: "linkclick",   kind: "convert",  hint: "purchased (CVR)" },
+  // On-site conversion (LPV → ATC → Checkout) is the PDP funnel — a separate module — and
+  // is Meta-pixel attributed. It is intentionally NOT here. The only outcome we keep is
+  // Orders, from OUR warehouse attribution (real, last-touch), as click → real order.
+  { key: "order",       label: "Orders",      field: "orders",      prev: "linkclick",   kind: "convert",  hint: "real warehouse-attributed orders · click → order" },
 ]
 
 const STAGE_BY_KEY = new Map(STAGES.map((s) => [s.key, s]))
-const VIDEO_GAP_KEYS = new Set(["v3s", "v25", "v50", "v75", "v100", "thruplay"])
+// thruplay excluded — it is not a clean sequential step, so it can't be the "biggest drop".
+const VIDEO_GAP_KEYS = new Set(["v3s", "v25", "v50", "v75", "v100"])
 
 // ── Ad model ───────────────────────────────────────────────────────────────
 export interface AdTag {
@@ -61,9 +69,12 @@ export interface FunnelAd {
   thruplay: number
   link_clicks: number
   clicks: number
-  orders: number
-  purchase_value: number
-  roas: number
+  landing_page_views: number
+  add_to_cart: number
+  initiate_checkout: number
+  orders: number          // REAL warehouse-attributed Meta orders (last-touch, by ad_id)
+  purchase_value: number  // REAL attributed net revenue (ex-GST)
+  roas: number            // REAL ROAS = purchase_value / spend
   hook_rate: number
   tags: AdTag[]
 }
@@ -71,6 +82,7 @@ export interface FunnelAd {
 export function parseAdFunnelRows(
   adRows: Record<string, unknown>[],
   tagMapRows: Record<string, unknown>[],
+  attributionRows: Record<string, unknown>[] = [],
 ): FunnelAd[] {
   // ad_id → tags[] (skip untagged, dedupe by tag_code)
   const tagMap = new Map<string, AdTag[]>()
@@ -88,15 +100,22 @@ export function parseAdFunnelRows(
     tagMap.set(adId, list)
   }
 
+  // ad_id → real warehouse attribution (last-touch). Orders/revenue/ROAS below are REAL,
+  // not Meta pixel — join is on ad_id (ad_name is not unique).
+  const realByAd = buildAdRealMap(attributionRows)
+
   return adRows
     .map((r) => {
       const adId = String(r[`${AP}.ad_id`] ?? "")
+      const spend = n(r[`${AP}.spend`])
+      const real = realByAd.get(adId)
+      const realRevenue = real?.realRevenue ?? 0
       return {
         ad_id: adId,
         ad_name: String(r[`${AP}.ad_name`] ?? "—"),
         campaign_name: String(r[`${AP}.campaign_name`] ?? "—"),
         adset_name: String(r[`${AP}.adset_name`] ?? "—"),
-        spend: n(r[`${AP}.spend`]),
+        spend,
         reach: n(r[`${AP}.reach`]),
         impressions: n(r[`${AP}.impressions`]),
         video_views: n(r[`${AP}.video_views`]),
@@ -107,14 +126,44 @@ export function parseAdFunnelRows(
         thruplay: n(r[`${AP}.video_thruplay_15s`]),
         link_clicks: n(r[`${AP}.link_clicks`]),
         clicks: n(r[`${AP}.clicks`]),
-        orders: n(r[`${AP}.purchases`]),
-        purchase_value: n(r[`${AP}.purchase_value`]),
-        roas: n(r[`${AP}.roas`]),
+        landing_page_views: n(r[`${AP}.landing_page_views`]),
+        add_to_cart: n(r[`${AP}.add_to_cart`]),
+        initiate_checkout: n(r[`${AP}.initiate_checkout`]),
+        orders: real?.realOrders ?? 0,
+        purchase_value: realRevenue,
+        roas: spend > 0 ? realRevenue / spend : 0,
         hook_rate: n(r[`${AP}.hook_rate`]),
         tags: tagMap.get(adId) ?? [],
       }
     })
     .filter((a) => a.ad_id !== "")
+}
+
+// ── Ad-grain real attribution (warehouse, last-touch) ────────────────────────
+// The pixel funnel tail (ATC→Checkout→Purchase) overcounts vs true orders. Real
+// attribution (gold.fct_order_attribution) resolves to the ad — join on lt_ad_id
+// (ad_name is NOT unique: one name can have several ad_ids). Each ad card shows its
+// true Meta orders/revenue and a real ROAS (true revenue ÷ that ad's own spend).
+export interface AdReal {
+  realOrders: number   // Meta last-touch attributed orders for the ad
+  realRevenue: number  // Meta attributed net revenue (ex-GST)
+  placedOrders: number // orders where Meta touched the journey (pre last-touch credit)
+}
+
+export function buildAdRealMap(
+  attributionRows: Record<string, unknown>[],
+): Map<string, AdReal> {
+  const map = new Map<string, AdReal>()
+  for (const r of attributionRows) {
+    const adId = String(r[`${OA}.lt_ad_id`] ?? "")
+    if (!adId) continue // null bucket = order not resolved to a specific ad
+    map.set(adId, {
+      realOrders: n(r[`${OA}.meta_attributed_orders`]),
+      realRevenue: n(r[`${OA}.meta_attributed_revenue`]),
+      placedOrders: n(r[`${OA}.placed_orders`]),
+    })
+  }
+  return map
 }
 
 function adCount(ad: FunnelAd, stageKey: string): number {
@@ -142,6 +191,9 @@ export interface FunnelTotals {
   frequency: number
   cpm: number
   spend: number
+  realOrders: number   // REAL warehouse-attributed Meta orders (the Orders stage)
+  realRevenue: number  // REAL attributed net revenue (ex-GST)
+  realRoas: number     // realRevenue / spend
   stages: FunnelStage[]
 }
 
@@ -150,13 +202,33 @@ function sumField(ads: FunnelAd[], field: keyof FunnelAd): number {
   return ads.reduce((acc, a) => acc + n(a[field] as number), 0)
 }
 
+/** Brand totals of REAL attributed orders/revenue, summed over all attribution rows
+ *  (includes the null-ad bucket — orders Meta-attributed but not resolved to an ad). */
+export function sumRealTotals(
+  attributionRows: Record<string, unknown>[],
+): { orders: number; revenue: number } {
+  let orders = 0
+  let revenue = 0
+  for (const r of attributionRows) {
+    orders += n(r[`${OA}.meta_attributed_orders`])
+    revenue += n(r[`${OA}.meta_attributed_revenue`])
+  }
+  return { orders, revenue }
+}
+
 export function buildFunnelTotals(
   totalsRow: Record<string, unknown> | undefined,
   ads: FunnelAd[],
+  realTotals?: { orders: number; revenue: number },
 ): FunnelTotals {
   // Prefer the exact (no-dimension) totals row; fall back to summing ads.
   const get = (field: keyof FunnelAd, cubeKey: string): number =>
     totalsRow ? n(totalsRow[cubeKey]) : sumField(ads, field)
+
+  // Real attributed orders/revenue: use the exact brand totals when provided,
+  // else fall back to summing the ads' (already-real) per-ad orders/revenue.
+  const realOrders = realTotals ? realTotals.orders : sumField(ads, "orders")
+  const realRevenue = realTotals ? realTotals.revenue : sumField(ads, "purchase_value")
 
   const counts: Record<string, number> = {
     reach: get("reach", `${AP}.reach`),
@@ -168,7 +240,7 @@ export function buildFunnelTotals(
     v100: get("video_p100", `${AP}.video_p100_views`),
     thruplay: get("thruplay", `${AP}.video_thruplay_15s`),
     linkclick: get("link_clicks", `${AP}.link_clicks`),
-    order: get("orders", `${AP}.purchases`),
+    order: realOrders, // REAL attributed orders, not pixel purchases
   }
 
   const impressions = counts.impressions || 1
@@ -205,7 +277,17 @@ export function buildFunnelTotals(
   const gap = stages.find((s) => s.key === worstKey)
   if (gap) gap.isGap = true
 
-  return { reach: counts.reach, impressions: counts.impressions, frequency, cpm, spend, stages }
+  return {
+    reach: counts.reach,
+    impressions: counts.impressions,
+    frequency,
+    cpm,
+    spend,
+    realOrders,
+    realRevenue,
+    realRoas: spend > 0 ? realRevenue / spend : 0,
+    stages,
+  }
 }
 
 // ── Per-stage analysis: strong / weak ads + neuro-tag rollup ─────────────────
@@ -354,4 +436,114 @@ export function analyzeStage(
     : []
 
   return { stage, isRateStage, strong, weak, tags, weakTags }
+}
+
+// ── Per-ad classification (stage-specific vs full-funnel strength) ────────────
+// Implements "a hook that wins 3s but loses P25 isn't a true winner".
+export type AdLabel = "hook_winner" | "retention_winner" | "conversion_winner" | "clickbait_risk"
+
+export const AD_LABEL_META: Record<AdLabel, { label: string; cls: string }> = {
+  hook_winner:       { label: "Hook winner",       cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  retention_winner:  { label: "Retention winner",  cls: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30" },
+  conversion_winner: { label: "Conversion winner", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+  clickbait_risk:    { label: "Clickbait risk",    cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+}
+
+function wAvg(num: number, den: number): number {
+  return den > 0 ? num / den : 0
+}
+
+/** Label ads vs impression-weighted account averages. One ad can carry multiple labels. */
+export function classifyAds(ads: FunnelAd[]): Map<string, AdLabel[]> {
+  const elig = ads.filter((a) => a.spend >= MIN_SPEND && a.impressions >= 1000)
+
+  let sImp = 0, s3s = 0, sP25 = 0, sP75 = 0, sLink = 0, sOrders = 0
+  for (const a of elig) {
+    sImp += a.impressions
+    s3s += a.video_views
+    sP25 += a.video_p25
+    sP75 += a.video_p75
+    sLink += a.link_clicks
+    sOrders += a.orders
+  }
+  const avgHook = wAvg(s3s, sImp)        // 3s / impressions
+  const avgP25  = wAvg(sP25, s3s)        // p25 / 3s (held past the hook)
+  const avgP75  = wAvg(sP75, s3s)        // p75 / 3s (deep retention)
+  const avgCtr  = wAvg(sLink, sImp)
+  const avgCvr  = wAvg(sOrders, sLink)   // click → REAL order (warehouse, no pixel)
+
+  const out = new Map<string, AdLabel[]>()
+  for (const a of elig) {
+    const hook = wAvg(a.video_views, a.impressions)
+    const p25  = wAvg(a.video_p25, a.video_views)
+    const p75  = wAvg(a.video_p75, a.video_views)
+    const ctr  = wAvg(a.link_clicks, a.impressions)
+    const cvr  = wAvg(a.orders, a.link_clicks)
+
+    const hookStrong = hook >= avgHook * 1.15
+    const attnStrong = hookStrong || ctr >= avgCtr * 1.15
+    const heldHook   = avgP25 > 0 && p25 >= avgP25 * 0.95
+    // Conversion strength from REAL attribution only (real click→order rate or real ROAS).
+    const convStrong = cvr >= avgCvr * 1.15 || a.roas >= 2.5
+
+    const labels: AdLabel[] = []
+    if (attnStrong && !heldHook) labels.push("clickbait_risk")
+    if (hookStrong && heldHook) labels.push("hook_winner")
+    if (avgP75 > 0 && p75 >= avgP75 * 1.15) labels.push("retention_winner")
+    if (convStrong && a.orders >= 1) labels.push("conversion_winner")
+    if (labels.length) out.set(a.ad_id, labels)
+  }
+  return out
+}
+
+// ── Neuro-category × stage heatmap (lift vs spend-weighted column average) ────
+export interface HeatStageDef { key: string; label: string; measure: string }
+
+export const HEAT_STAGES: HeatStageDef[] = [
+  // Ad-performance / creative stages only — hold rates + CTR are Meta delivery metrics.
+  // On-site conversion rates (Click→LPV, LPV→ATC, ATC→CO, CO→Buy) are Meta-pixel and
+  // belong to the PDP funnel module, so they are intentionally excluded here.
+  { key: "hook",  label: "Hook 3s",   measure: `${NT}.hook_rate` },
+  { key: "h50",   label: "50%",       measure: `${NT}.hold_rate_p50` },
+  { key: "h75",   label: "75%",       measure: `${NT}.hold_rate_p75` },
+  { key: "h100",  label: "100%",      measure: `${NT}.hold_rate_p100` },
+  { key: "ctr",   label: "CTR",       measure: `${NT}.ctr` },
+]
+
+export interface HeatCell { stageKey: string; rate: number; lift: number }
+export interface HeatRow { category: string; spend: number; cells: HeatCell[] }
+export interface HeatmapData { stages: HeatStageDef[]; rows: HeatRow[] }
+
+export function parseCategoryStageHeatmap(rows: Record<string, unknown>[]): HeatmapData {
+  const cats = rows
+    .map((r) => ({
+      category: String(r[`${NT}.category_name`] ?? "—"),
+      spend: n(r[`${NT}.spend_sc`]),
+      rates: Object.fromEntries(HEAT_STAGES.map((s) => [s.key, n(r[s.measure])])) as Record<string, number>,
+    }))
+    .filter((c) => c.category !== "Untagged" && c.category !== "—" && c.spend > 0)
+
+  // spend-weighted column averages
+  const colAvg: Record<string, number> = {}
+  for (const s of HEAT_STAGES) {
+    let num = 0
+    let den = 0
+    for (const c of cats) {
+      num += c.rates[s.key] * c.spend
+      den += c.spend
+    }
+    colAvg[s.key] = den > 0 ? num / den : 0
+  }
+
+  const heatRows: HeatRow[] = cats.map((c) => ({
+    category: c.category,
+    spend: c.spend,
+    cells: HEAT_STAGES.map((s) => {
+      const rate = c.rates[s.key]
+      const avg = colAvg[s.key]
+      return { stageKey: s.key, rate, lift: avg > 0 ? ((rate - avg) / avg) * 100 : 0 }
+    }),
+  }))
+
+  return { stages: HEAT_STAGES, rows: heatRows }
 }

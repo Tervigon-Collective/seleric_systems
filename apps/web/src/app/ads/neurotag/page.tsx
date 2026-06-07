@@ -109,6 +109,8 @@ export default async function NeuroTagPage({
         funnelAdRows={adFunnel?.adRows ?? []}
         funnelTotals={adFunnel?.funnelTotals ?? []}
         funnelTagMap={adFunnel?.adTagMap ?? []}
+        funnelCategoryStage={adFunnel?.categoryStage ?? []}
+        funnelAdAttribution={adFunnel?.adAttribution ?? []}
         start={range.start}
         end={range.end}
         brand={brand.id}
