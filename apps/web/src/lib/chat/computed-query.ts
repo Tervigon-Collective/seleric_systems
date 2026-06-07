@@ -7,9 +7,12 @@ export async function runComputedAnalysis(
   fetchQuery: Record<string, unknown>,
   compute: ComputedSpec
 ): Promise<CubeRow[]> {
-  const raw = await callCubeTool("cube_query", {
-    query: { limit: 100_000, ...fetchQuery, timezone: IST_TIMEZONE },
-  })
+  const { limit: _ignored, ...fetchWithoutLimit } = fetchQuery
+  const query =
+    compute.type === "top_n"
+      ? { limit: fetchQuery.limit ?? 100_000, ...fetchQuery, timezone: IST_TIMEZONE }
+      : { ...fetchWithoutLimit, timezone: IST_TIMEZONE }
+  const raw = await callCubeTool("cube_query", { query })
   const rows = extractRows(raw)
 
   switch (compute.type) {

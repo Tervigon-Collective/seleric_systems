@@ -22,16 +22,19 @@ function BlockTitle({ children }: { children: string }) {
 export function UnitEconomicsGrid({
   result,
   targetProfit,
+  periodRoas,
 }: {
   result: SimResult
   targetProfit: number
+  /** Live period ROAS (revenue ÷ ad spend) when a product with campaigns is selected. */
+  periodRoas?: number | null
 }) {
   const {
     netRev,
     contribution,
     cmPercent,
     netProfit,
-    roas,
+    roas: simRoas,
     beVendorCost,
     targetVendorCost,
     requiredReductionPct,
@@ -40,6 +43,10 @@ export function UnitEconomicsGrid({
     adSpendRequired,
     expectedRevenue,
   } = result
+
+  const showPeriodRoas = periodRoas != null && periodRoas > 0
+  const roasValue = showPeriodRoas ? periodRoas : simRoas
+  const roasSub = showPeriodRoas ? "rev ÷ ad spend" : simRoas > 0 ? "ASP ÷ CAC (sim)" : undefined
 
   const alreadyAtTarget = requiredReductionPct <= 0
 
@@ -68,7 +75,12 @@ export function UnitEconomicsGrid({
           compact
           highlight={netProfit > 0}
         />
-        <MetricTile label="ROAS" value={`${roas.toFixed(2)}x`} compact />
+        <MetricTile
+          label="ROAS"
+          value={roasValue > 0 ? `${roasValue.toFixed(2)}x` : "—"}
+          sub={roasSub}
+          compact
+        />
       </div>
 
       <div className="border-t border-stone-200 dark:border-night-800 pt-3">

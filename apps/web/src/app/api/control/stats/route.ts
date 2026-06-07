@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@multiagent/db"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())

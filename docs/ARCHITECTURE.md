@@ -130,3 +130,11 @@ turborepo
 ├── services/mcp-shopify → Railway (Node.js, SSE)
 └── packages/          → Not deployed; build-time only
 ```
+
+## Related documentation
+
+| Document | Use when |
+|---|---|
+| [DOMAIN_INSIGHT_QUESTIONS.md](./DOMAIN_INSIGHT_QUESTIONS.md) | Domain-specific questions the brain can answer, signal mapping, action taxonomy |
+| [DATA_FLOW.md](./DATA_FLOW.md) | End-to-end signal → insight → action → outcome flow |
+| [REQUIREMENTS.md](./REQUIREMENTS.md) | Functional and phase-gate requirements |

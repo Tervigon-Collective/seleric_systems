@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { callCubeTool } from "@/lib/cube-client"
 import type { RawSkuRow, RawCampaignRow } from "@/lib/campaign-sku-matcher"
+import { parseDashboardBrandFilter, withBrandFilter } from "@/lib/dashboard/brand-filter"
 
 function extractRows(raw: unknown): Record<string, unknown>[] {
   if (Array.isArray(raw)) return raw as Record<string, unknown>[]
@@ -31,6 +32,9 @@ export async function GET(req: Request) {
   const rawFrom = url.searchParams.get("dateFrom") ?? "2025-01-01"
   const rawTo = url.searchParams.get("dateTo") ?? new Date().toISOString().slice(0, 10)
   const { from: dateFrom, to: dateTo } = normalizeDateRange(rawFrom, rawTo)
+  const brand = parseDashboardBrandFilter({
+    brand: url.searchParams.get("brand") ?? undefined,
+  })
 
   try {
     const [skuRaw, campaignRaw] = await Promise.all([
@@ -39,7 +43,7 @@ export async function GET(req: Request) {
       // are separate placement totals, so we derive true per-unit rates instead of
       // stripping hardcoded shipping (117) / packaging (10) constants from a blended cost.
       callCubeTool("cube_query", {
-        query: {
+        query: withBrandFilter("gold__fct_order_items", brand, {
           dimensions: [
             "gold__fct_order_items.sku",
             "gold__fct_order_items.product_title",
@@ -50,6 +54,7 @@ export async function GET(req: Request) {
             "gold__fct_order_items.placed_shipping_cost",
             "gold__fct_order_items.placed_packaging_cost",
             "gold__fct_order_items.placed_gateway_fee",
+            "gold__fct_order_items.total_cogs",
             "gold__fct_order_items.rto_cost",
             "gold__fct_order_items.returned_units",
             "gold__fct_order_items.avg_unit_price",
@@ -64,25 +69,23 @@ export async function GET(req: Request) {
             },
           ],
           order: { "gold__fct_order_items.quantity": "desc" },
-          limit: 500,
           timezone: "Asia/Kolkata",
-        },
+        }),
       }),
-      // Campaign ad spend + purchases grouped by campaign name
+      // Daily Meta campaign spend + purchases (marketing_performance — ad_performance is hourly-only).
       callCubeTool("cube_query", {
-        query: {
-          dimensions: ["ad_performance.campaign_name"],
-          measures: ["ad_performance.ad_spend", "ad_performance.purchases"],
+        query: withBrandFilter("marketing_performance", brand, {
+          dimensions: ["marketing_performance.campaign_name"],
+          measures: ["marketing_performance.ad_spend", "marketing_performance.purchases"],
           timeDimensions: [
             {
-              dimension: "ad_performance.date_start",
+              dimension: "marketing_performance.date_start",
               dateRange: [dateFrom, dateTo],
             },
           ],
-          order: { "ad_performance.ad_spend": "desc" },
-          limit: 500,
+          order: { "marketing_performance.ad_spend": "desc" },
           timezone: "Asia/Kolkata",
-        },
+        }),
       }),
     ])
 
@@ -104,6 +107,10 @@ export async function GET(req: Request) {
         const aspMeasure = num(r["gold__fct_order_items.avg_unit_price"])
         const asp = aspMeasure > 0 ? aspMeasure : perUnit(grossRevenue, qty)
 
+        const totalCogs = num(r["gold__fct_order_items.total_cogs"])
+        const totalEffectiveCogs = placedProductCost + placedShipping + placedPackaging
+        const gatewayFeePerUnit = perUnit(placedGateway, qty)
+
         return {
           sku: String(r["gold__fct_order_items.sku"]),
           productTitle: String(r["gold__fct_order_items.product_title"] ?? ""),
@@ -114,24 +121,31 @@ export async function GET(req: Request) {
           shippingPerUnit: perUnit(placedShipping, qty),
           packagingPerUnit: perUnit(placedPackaging, qty),
           rtoPerUnit: perUnit(rtoCost, qty),
-          // Effective gateway rate on the ex-GST revenue base the engine multiplies against.
-          gatewayPct: grossRevenueExGst > 0 ? (placedGateway / grossRevenueExGst) * 100 : 0,
+          gatewayFeePerUnit,
+          // Gateway % is on gross ASP (incl. GST) — matches metafield rate (e.g. 2.5%).
+          gatewayPct: grossRevenue > 0 ? (placedGateway / grossRevenue) * 100 : 0,
           // Real return rate (returned_units pre-filtered to RETURNED + IN_PROGRESS).
           returnRatePct: qty > 0 ? (returnedUnits / qty) * 100 : 0,
           asp: asp > 0 ? asp : null,
           grossRevenue,
           netRevenueExGst,
+          placedProductCost,
+          placedShippingCost: placedShipping,
+          placedPackagingCost: placedPackaging,
+          placedGatewayFee: placedGateway,
+          totalCogs,
+          totalEffectiveCogs,
         }
       })
 
     // --- Campaigns ---
     const campaignRows = extractRows(campaignRaw)
     const campaigns: RawCampaignRow[] = campaignRows
-      .filter((r) => r["ad_performance.campaign_name"])
+      .filter((r) => r["marketing_performance.campaign_name"])
       .map((r) => ({
-        campaignName: String(r["ad_performance.campaign_name"]),
-        spend: num(r["ad_performance.ad_spend"]),
-        purchases: num(r["ad_performance.purchases"]),
+        campaignName: String(r["marketing_performance.campaign_name"]),
+        spend: num(r["marketing_performance.ad_spend"]),
+        purchases: num(r["marketing_performance.purchases"]),
       }))
 
     return NextResponse.json({ skus, campaigns })

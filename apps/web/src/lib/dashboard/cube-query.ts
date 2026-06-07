@@ -28,9 +28,18 @@ function logCubeException(label: string, err: unknown): void {
   console.error(`[cube] ${label} failed:`, msg)
 }
 
+/**
+ * Applies timezone. Does not inject a default row cap — callers set `limit`
+ * explicitly for top-N listings. Omitting limit avoids skewed totals on
+ * aggregate KPI rows (measures-only) and on full dimensional/time-series fetches.
+ */
+export function buildCubeQuery(query: Record<string, unknown>): Record<string, unknown> {
+  return { timezone: IST_TIMEZONE, ...query }
+}
+
 export async function runCubeQuery(query: Record<string, unknown>): Promise<CubeRow[]> {
   const raw = await callCubeTool("cube_query", {
-    query: { timezone: IST_TIMEZONE, limit: 500, ...query },
+    query: buildCubeQuery(query),
   })
   const rows = extractRows(raw)
   if (!rows.length) logCubeError("cube_query", raw)

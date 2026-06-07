@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { simulate, type SimInputs, type Classification } from "@/lib/cogs-engine"
-import { type ProductGroup } from "@/lib/campaign-sku-matcher"
+import { type ProductGroup, resolveProductCac, productPeriodRoas } from "@/lib/campaign-sku-matcher"
 
 type FilterTab = "ALL" | Classification
 
@@ -67,7 +67,7 @@ interface DateRangeSummaryPanelProps {
   onSelect: (base: string) => void
 }
 
-type SortKey = "grossRevenue" | "totalQty" | "netProfit" | "roas" | "cac"
+type SortKey = "grossRevenue" | "totalQty" | "netProfit" | "roas" | "cac" | "adSpend"
 type SortDir = "asc" | "desc"
 
 export function DateRangeSummaryPanel({
@@ -96,22 +96,26 @@ export function DateRangeSummaryPanel({
       const packaging = p.avgPackagingPerUnit > 0 ? Math.round(p.avgPackagingPerUnit) : sharedInputs.packaging
       const rtoPercent = p.avgReturnRatePct > 0 ? p.avgReturnRatePct : sharedInputs.rtoPercent
       const pgwPercent = p.avgGatewayPct > 0 ? p.avgGatewayPct : sharedInputs.pgwPercent
-      const cac = p.cac > 0 ? Math.round(p.cac) : sharedInputs.cac
+      const cac = resolveProductCac(p)
 
       const result = simulate({ ...sharedInputs, asp, cogs, cac, cogsShipping, packaging, rtoPercent, pgwPercent })
-      const effectiveCogs = cogs + cogsShipping + packaging
+      const effectiveCogs =
+        p.totalQty > 0 && p.totalEffectiveCogs > 0
+          ? Math.round(p.totalEffectiveCogs / p.totalQty)
+          : cogs + cogsShipping + packaging
+      const roas = productPeriodRoas(p)
       return {
         productBase: p.productBase,
         productTitle: p.productTitle,
         classification: result.classification,
         netProfit: result.netProfit,
         cmPercent: result.cmPercent,
-        roas: result.roas,
+        roas,
         grossRevenue: p.grossRevenue,
         totalQty: p.totalQty,
         asp,
         effectiveCogs,
-        totalCogs: Math.round(effectiveCogs * p.totalQty),
+        totalCogs: Math.round(p.totalEffectiveCogs),
         cogs,
         cac,
         adSpend: p.adSpend,
@@ -225,7 +229,9 @@ export function DateRangeSummaryPanel({
               <th className={thClickCls} onClick={() => toggleSort("cac")} style={{ width: 72 }}>
                 CAC <SortIcon col="cac" />
               </th>
-              <th className={thCls} style={{ width: 88 }}>Ad Spend</th>
+              <th className={thClickCls} onClick={() => toggleSort("adSpend")} style={{ width: 88 }}>
+                Ad Spend <SortIcon col="adSpend" />
+              </th>
               <th className={thClickCls} onClick={() => toggleSort("netProfit")} style={{ width: 92 }}>
                 Net Profit/u <SortIcon col="netProfit" />
               </th>
@@ -310,7 +316,7 @@ export function DateRangeSummaryPanel({
           {filtered.length} of {entries.length} product{entries.length !== 1 ? "s" : ""}
         </span>
         <span className="text-[10px] text-stone-400 dark:text-night-600">
-          Costs, returns &amp; gateway from live data · CAC &amp; targets from shared config
+          ROAS = revenue ÷ ad spend · organic SKUs show — for CAC/ROAS
         </span>
       </div>
     </div>

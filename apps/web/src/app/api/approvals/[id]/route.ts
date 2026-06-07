@@ -4,6 +4,8 @@ import { prisma } from "@multiagent/db"
 import { Queue } from "bullmq"
 import Redis from "ioredis"
 
+export const dynamic = "force-dynamic"
+
 function verifyToken(actionId: string, signalId: string, token: string): boolean {
   const secret = process.env.APPROVAL_SECRET ?? "dev-secret-change-in-prod"
   const msg = `${actionId}:${signalId}`

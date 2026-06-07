@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { SimInputPanel } from "@/components/cogs/SimInputPanel"
 import { UnitEconomicsGrid } from "@/components/cogs/UnitEconomicsGrid"
 import { ScenarioTable } from "@/components/cogs/ScenarioTable"
@@ -10,12 +11,17 @@ import { simulate, DEFAULT_INPUTS, type SimInputs, type Classification } from "@
 import {
   groupSkusByProduct,
   matchCampaignsToProducts,
+  resolveProductCac,
+  resolveVariantCac,
+  productPeriodRoas,
+  variantPeriodRoas,
   type RawSkuRow,
   type RawCampaignRow,
   type ProductGroup,
   type VariantData,
 } from "@/lib/campaign-sku-matcher"
 import { DateRangeSummaryPanel } from "@/components/cogs/DateRangeSummaryPanel"
+import { DEFAULT_BRAND_ID } from "@/lib/dashboard/brand-filter-constants"
 
 type ActiveTab = "portfolio" | "calculator"
 
@@ -61,7 +67,17 @@ interface ApiResponse {
   campaigns: RawCampaignRow[]
 }
 
+function brandIdFromSearchParams(searchParams: URLSearchParams): number {
+  const raw = searchParams.get("brand")
+  if (!raw) return DEFAULT_BRAND_ID
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) return DEFAULT_BRAND_ID
+  return parsed
+}
+
 export default function CogsSimulationPage() {
+  const searchParams = useSearchParams()
+  const brandId = brandIdFromSearchParams(searchParams)
   const [activeTab, setActiveTab] = useState<ActiveTab>("portfolio")
   const [dateFrom, setDateFrom] = useState(daysAgoStr(30))
   const [dateTo, setDateTo] = useState(todayStr())
@@ -77,7 +93,7 @@ export default function CogsSimulationPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/tools/cogs-data?dateFrom=${from}&dateTo=${to}`)
+      const res = await fetch(`/api/tools/cogs-data?dateFrom=${from}&dateTo=${to}&brand=${brandId}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: ApiResponse = await res.json()
       const grouped = groupSkusByProduct(data.skus ?? [])
@@ -93,7 +109,7 @@ export default function CogsSimulationPage() {
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, brandId])
 
   useEffect(() => {
     fetchData()
@@ -125,7 +141,7 @@ export default function CogsSimulationPage() {
           packaging: variant.packagingPerUnit > 0 ? Math.round(variant.packagingPerUnit) : prev.packaging,
           rtoPercent: variant.returnRatePct > 0 ? round1(variant.returnRatePct) : prev.rtoPercent,
           pgwPercent: variant.gatewayPct > 0 ? round1(variant.gatewayPct) : prev.pgwPercent,
-          cac: variant.cac > 0 ? Math.round(variant.cac) : prev.cac,
+          cac: resolveVariantCac(variant, product),
           asp: variantAsp ?? prev.asp,
         }))
         return
@@ -148,7 +164,7 @@ export default function CogsSimulationPage() {
       packaging: product.avgPackagingPerUnit > 0 ? Math.round(product.avgPackagingPerUnit) : prev.packaging,
       rtoPercent: product.avgReturnRatePct > 0 ? round1(product.avgReturnRatePct) : prev.rtoPercent,
       pgwPercent: product.avgGatewayPct > 0 ? round1(product.avgGatewayPct) : prev.pgwPercent,
-      cac: product.cac > 0 ? Math.round(product.cac) : prev.cac,
+      cac: resolveProductCac(product),
       asp: derivedAsp ?? prev.asp,
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,6 +175,16 @@ export default function CogsSimulationPage() {
   const selectedVariant: VariantData | undefined = selectedProduct?.variantData.find(
     (v) => v.sku === selectedVariantSku,
   )
+
+  const periodRoas = useMemo(() => {
+    if (selectedVariant && selectedVariant.allocatedAdSpend > 0) {
+      return variantPeriodRoas(selectedVariant)
+    }
+    if (selectedProduct && selectedProduct.adSpend > 0) {
+      return productPeriodRoas(selectedProduct)
+    }
+    return null
+  }, [selectedProduct, selectedVariant])
 
   const handleInputChange = useCallback((patch: Partial<SimInputs>) => {
     setInputs((prev) => ({ ...prev, ...patch }))
@@ -367,7 +393,11 @@ export default function CogsSimulationPage() {
               <SimInputPanel inputs={inputs} onChange={handleInputChange} />
             </div>
             <div className="flex flex-col gap-3 lg:col-span-7">
-              <UnitEconomicsGrid result={result} targetProfit={inputs.targetAbsoluteProfit} />
+              <UnitEconomicsGrid
+                result={result}
+                targetProfit={inputs.targetAbsoluteProfit}
+                periodRoas={periodRoas}
+              />
               <ScenarioTable rows={result.scenarios} currentCogs={result.productCost} />
             </div>
           </div>

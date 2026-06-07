@@ -138,7 +138,6 @@ export async function fetchNeurotagData(
               ],
               timeDimensions: [td(`${C}.report_date`, range)],
               order: { [`${C}.spend_sc`]: "desc" },
-              limit: 500,
             },
             brand,
           ),

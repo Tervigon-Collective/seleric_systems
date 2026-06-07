@@ -97,7 +97,10 @@ export function simulate(inputs: SimInputs): SimResult {
 
   const netRev = gstInclusive ? asp / (1 + taxRate / 100) : asp
 
-  const pgwCost = netRev * (pgwPercent / 100)
+  // Gateway fee in gold is charged on gross ASP (incl. GST when gstInclusive).
+  const pgwCost = gstInclusive
+    ? asp * (pgwPercent / 100)
+    : netRev * (pgwPercent / 100)
   const rtoCost = netRev * (rtoPercent / 100)
   const totalVarCost = cac + ship + pgwCost + rtoCost
 

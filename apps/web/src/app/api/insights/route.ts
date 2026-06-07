@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@multiagent/db"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const limit = Math.min(Number(searchParams.get("limit") ?? "50"), 200)

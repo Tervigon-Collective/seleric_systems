@@ -8,6 +8,7 @@
     "schema": "prisma/schema.prisma"
   },
   "scripts": {
+    "build": "prisma generate",
     "generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "studio": "prisma studio",

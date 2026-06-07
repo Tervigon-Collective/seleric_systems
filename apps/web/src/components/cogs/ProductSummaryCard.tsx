@@ -1,6 +1,11 @@
 "use client"
 
-import type { ProductGroup, VariantData } from "@/lib/campaign-sku-matcher"
+import {
+  type ProductGroup,
+  type VariantData,
+  productPeriodRoas,
+  variantPeriodRoas,
+} from "@/lib/campaign-sku-matcher"
 import { MetricTile } from "./MetricTile"
 
 const fmt = (n: number) =>
@@ -20,6 +25,7 @@ export function ProductSummaryCard({
         : variant.qty > 0 && variant.grossRevenue > 0
           ? fmt(variant.grossRevenue / variant.qty)
           : "—"
+    const variantRoas = variantPeriodRoas(variant)
 
     return (
       <div className="rounded-xl border border-insight-border dark:border-night-800 bg-white dark:bg-night-900 p-3 shadow-sm dark:shadow-none">
@@ -29,7 +35,7 @@ export function ProductSummaryCard({
             ({(variant.qtyShare * 100).toFixed(0)}% of {product.productBase} qty)
           </span>
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
           <MetricTile
             label="Units sold"
             value={variant.qty.toLocaleString("en-IN")}
@@ -40,6 +46,16 @@ export function ProductSummaryCard({
             label="Product cost / unit"
             value={fmt(variant.cogs)}
             sub={`+ ship ₹${Math.round(variant.shippingPerUnit)} + pkg ₹${Math.round(variant.packagingPerUnit)} = ₹${Math.round(variant.cogs + variant.shippingPerUnit + variant.packagingPerUnit)}`}
+            compact
+          />
+          <MetricTile
+            label="Total COGS"
+            value={variant.totalEffectiveCogs > 0 ? fmt(variant.totalEffectiveCogs) : "—"}
+            sub={
+              variant.qty > 0 && variant.totalEffectiveCogs > 0
+                ? `₹${Math.round(variant.totalEffectiveCogs / variant.qty)}/u · product ₹${Math.round(variant.totalCogs)}`
+                : undefined
+            }
             compact
           />
           <MetricTile
@@ -69,6 +85,12 @@ export function ProductSummaryCard({
             }
             compact
           />
+          <MetricTile
+            label="ROAS"
+            value={variantRoas > 0 ? `${variantRoas.toFixed(2)}x` : "—"}
+            sub={variant.allocatedAdSpend > 0 ? "rev ÷ ad spend" : undefined}
+            compact
+          />
         </div>
         {product.matchedCampaigns.length > 0 && (
           <p className="mt-2 truncate text-[10px] text-stone-400 dark:text-night-600">
@@ -86,13 +108,14 @@ export function ProductSummaryCard({
       : product.totalQty > 0 && product.grossRevenue > 0
         ? fmt(product.grossRevenue / product.totalQty)
         : "—"
+  const periodRoas = productPeriodRoas(product)
 
   return (
     <div className="rounded-xl border border-insight-border dark:border-night-800 bg-white dark:bg-night-900 p-3 shadow-sm dark:shadow-none">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-stone-500 dark:text-night-500">
         Period data — {product.productBase}
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         <MetricTile
           label="Units sold"
           value={product.totalQty.toLocaleString("en-IN")}
@@ -103,6 +126,16 @@ export function ProductSummaryCard({
           label="Product cost / unit"
           value={fmt(product.avgCogs)}
           sub={`+ ship ₹${Math.round(product.avgShippingPerUnit)} + pkg ₹${Math.round(product.avgPackagingPerUnit)} = ₹${Math.round(product.avgCogs + product.avgShippingPerUnit + product.avgPackagingPerUnit)}`}
+          compact
+        />
+        <MetricTile
+          label="Total COGS"
+          value={product.totalEffectiveCogs > 0 ? fmt(product.totalEffectiveCogs) : "—"}
+          sub={
+            product.totalQty > 0 && product.totalEffectiveCogs > 0
+              ? `₹${Math.round(product.totalEffectiveCogs / product.totalQty)}/u · product ₹${Math.round(product.totalCogs)}`
+              : undefined
+          }
           compact
         />
         <MetricTile
@@ -132,6 +165,12 @@ export function ProductSummaryCard({
                 ? "No campaigns"
                 : undefined
           }
+          compact
+        />
+        <MetricTile
+          label="ROAS"
+          value={periodRoas > 0 ? `${periodRoas.toFixed(2)}x` : "—"}
+          sub={product.adSpend > 0 ? "rev ÷ ad spend" : undefined}
           compact
         />
       </div>
