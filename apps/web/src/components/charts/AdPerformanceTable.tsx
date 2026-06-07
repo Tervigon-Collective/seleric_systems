@@ -259,60 +259,44 @@ export function AdPerformanceTable({ rows }: Props) {
 
                   {isExpanded && (
                     <tr key={`${ad.ad_id}-expanded`} className="bg-stone-50 dark:bg-night-900 border-b border-stone-100 dark:border-night-850">
-                      <td colSpan={8} className="px-4 py-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Full tag list */}
-                          <div>
-                            <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
-                              Neuro Tags ({ad.tags.length})
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {ad.tags.map((t) => (
-                                <div
-                                  key={t.tag_code}
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] ${tagChipCls(t.category_name)}`}
-                                >
-                                  <span className="font-mono font-medium">{t.tag_code}</span>
-                                  <span className="opacity-75">· {t.hack_name}</span>
-                                </div>
-                              ))}
-                              {ad.tags.length === 0 && (
-                                <span className="text-stone-400 dark:text-night-600 text-xs italic">No tags mapped</span>
-                              )}
+                      <td colSpan={2} className="px-3 py-3 align-top">
+                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
+                          Neuro Tags ({ad.tags.length})
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {ad.tags.map((t) => (
+                            <div
+                              key={t.tag_code}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] ${tagChipCls(t.category_name)}`}
+                            >
+                              <span className="font-mono font-medium">{t.tag_code}</span>
+                              <span className="opacity-75">· {t.hack_name}</span>
                             </div>
-                          </div>
-
-                          {/* Video metrics */}
-                          <div>
-                            <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
-                              Video Performance
-                            </p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {[
-                                { label: "Hook Rate",    value: ad.hook_rate > 0 ? `${ad.hook_rate.toFixed(1)}%` : "—" },
-                                { label: "Completion",   value: ad.hold_rate_p100 > 0 ? `${ad.hold_rate_p100.toFixed(1)}%` : "—" },
-                                { label: "Thruplay",     value: fmtCount(ad.thruplay) },
-                                { label: "₹/Thruplay",  value: ad.cost_per_thruplay > 0 ? fmtCurrency(ad.cost_per_thruplay) : "—" },
-                              ].map((m) => (
-                                <div key={m.label}>
-                                  <p className="text-[9px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{m.label}</p>
-                                  <p className="text-xs font-semibold text-stone-700 dark:text-night-200">{m.value}</p>
-                                </div>
-                              ))}
+                          ))}
+                          {ad.tags.length === 0 && (
+                            <span className="text-stone-400 dark:text-night-600 text-xs italic">No tags mapped</span>
+                          )}
+                        </div>
+                      </td>
+                      <td colSpan={6} className="px-3 py-3 align-top">
+                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
+                          Video Performance
+                        </p>
+                        <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                          {[
+                            { label: "Hook Rate",      value: ad.hook_rate > 0 ? `${ad.hook_rate.toFixed(1)}%` : "—" },
+                            { label: "Completion",     value: ad.hold_rate_p100 > 0 ? `${ad.hold_rate_p100.toFixed(1)}%` : "—" },
+                            { label: "Thruplay",       value: fmtCount(ad.thruplay) },
+                            { label: "₹/Thruplay",    value: ad.cost_per_thruplay > 0 ? fmtCurrency(ad.cost_per_thruplay) : "—" },
+                            { label: "Link Clicks",    value: fmtCount(ad.link_clicks) },
+                            { label: "Purchase Value", value: fmtCurrency(ad.net_revenue) },
+                            { label: "ROAS",           value: `${ad.roas.toFixed(2)}×` },
+                          ].map((m) => (
+                            <div key={m.label} className="min-w-0">
+                              <p className="text-[9px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{m.label}</p>
+                              <p className="text-xs font-semibold tabular-nums text-stone-700 dark:text-night-200">{m.value}</p>
                             </div>
-                            <div className="mt-2 grid grid-cols-3 gap-2">
-                              {[
-                                { label: "Link Clicks",    value: fmtCount(ad.link_clicks) },
-                                { label: "Purchase Value", value: fmtCurrency(ad.net_revenue) },
-                                { label: "ROAS",           value: `${ad.roas.toFixed(2)}×` },
-                              ].map((m) => (
-                                <div key={m.label}>
-                                  <p className="text-[9px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{m.label}</p>
-                                  <p className="text-xs font-semibold text-stone-700 dark:text-night-200">{m.value}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </td>
                     </tr>
