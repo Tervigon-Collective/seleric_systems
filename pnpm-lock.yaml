@@ -38,12 +38,21 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
+      '@multiagent/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@multiagent/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@multiagent/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       ai:
         specifier: ^6.0.191
         version: 6.0.191(zod@3.25.76)
+      bullmq:
+        specifier: ^5.7.0
+        version: 5.77.1
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -56,6 +65,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      ioredis:
+        specifier: ^5.4.0
+        version: 5.10.1
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.1
@@ -153,6 +165,19 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  packages/queue:
+    dependencies:
+      bullmq:
+        specifier: ^5.7.0
+        version: 5.77.1
+      ioredis:
+        specifier: ^5.4.0
+        version: 5.10.1
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+
   packages/shared-types:
     devDependencies:
       typescript:
@@ -195,6 +220,9 @@ importers:
       '@multiagent/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@multiagent/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@multiagent/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -213,6 +241,9 @@ importers:
       ioredis:
         specifier: ^5.4.0
         version: 5.10.1
+      openai:
+        specifier: ^4.0.0
+        version: 4.104.0(zod@3.25.76)
       pino:
         specifier: ^9.3.0
         version: 9.14.0
@@ -3148,6 +3179,18 @@ packages:
     resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
 
+  openai@4.104.0:
+    resolution: {integrity: sha512-p99EFNsA/yX6UhVO93f5kJsDRLAg+CTA2RBqdHK4RtK8u5IJw32Hyb2dTGKbnnFmnuoBv5r7Z2CURI9sGZpSuA==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -5640,7 +5683,7 @@ snapshots:
   dot-case@3.0.4:
     dependencies:
       no-case: 3.0.4
-      tslib: 2.4.1
+      tslib: 2.8.1
 
   dotenv@17.4.2: {}
 
@@ -6709,7 +6752,7 @@ snapshots:
 
   lower-case@2.0.2:
     dependencies:
-      tslib: 2.4.1
+      tslib: 2.8.1
 
   lru-cache@10.4.3: {}
 
@@ -7188,7 +7231,7 @@ snapshots:
   no-case@3.0.4:
     dependencies:
       lower-case: 2.0.2
-      tslib: 2.4.1
+      tslib: 2.8.1
 
   node-abort-controller@3.1.1: {}
 
@@ -7279,6 +7322,20 @@ snapshots:
   onetime@6.0.0:
     dependencies:
       mimic-fn: 4.0.0
+
+  openai@4.104.0(zod@3.25.76):
+    dependencies:
+      '@types/node': 18.19.130
+      '@types/node-fetch': 2.6.13
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0
+    optionalDependencies:
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - encoding
 
   optionator@0.9.4:
     dependencies:
@@ -7852,7 +7909,7 @@ snapshots:
   snake-case@3.0.4:
     dependencies:
       dot-case: 3.0.4
-      tslib: 2.4.1
+      tslib: 2.8.1
 
   snakecase-keys@5.4.4:
     dependencies:

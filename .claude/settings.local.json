@@ -47,9 +47,14 @@
       "Bash(xargs grep -l \"Revenue & orders daily\\\\|Top products by revenue\\\\|Return & cancel\\\\|shopify\")",
       "Bash(xargs grep -li \"shopify\")",
       "PowerShell(Get-ChildItem \"node_modules\\\\@ai-sdk\\\\react\" -Recurse | Select-Object FullName | Where-Object { $_.FullName -match \"d\\\\.ts\" } | Select-Object -First 3)",
-      "Bash(where python *)",
-      "Bash(where py *)",
-      "Bash(py --version)"
+      "Bash(Get-ChildItem *)",
+      "Bash(xargs wc -l)",
+      "Bash(pnpm --version)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose config *)",
+      "Bash(xargs grep -l \"approval\\\\|Approval\")",
+      "Bash(echo \" [exit:$?]\")",
+      "mcp__claude_ai_Seleric__cube_channel_pnl"
     ]
   }
 }
