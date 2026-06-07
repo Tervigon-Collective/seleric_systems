@@ -242,13 +242,30 @@ interface Props {
   start: string
   end: string
   brand: number
+  /** When `focusNonce` changes, filter the table to `focusText`… */
+  focusText?: string
+  /** …and open the ad drawer for this tag. */
+  focusTagCode?: string
+  focusNonce?: number
 }
 
-export function NeuroTagLeaderboard({ tags, start, end, brand }: Props) {
+export function NeuroTagLeaderboard({ tags, start, end, brand, focusText, focusTagCode, focusNonce = 0 }: Props) {
   const [creditMode, setCreditMode] = useState<"split" | "full">("split")
   const [sortKey, setSortKey] = useState<SortKey>("score")
   const [sortDir, setSortDir] = useState<1 | -1>(1)
   const [selected, setSelected] = useState<ScoredTag | null>(null)
+  const [filter, setFilter] = useState("")
+
+  // Respond to a search-result selection coming from the universal search.
+  useEffect(() => {
+    if (!focusNonce) return
+    setFilter(focusText ?? "")
+    if (focusTagCode) {
+      const t = tags.find((x) => x.tag_code === focusTagCode)
+      if (t) setSelected(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce])
 
   if (!tags.length) {
     return <p className="text-sm text-stone-500 dark:text-night-500">No data for this period.</p>
@@ -259,7 +276,17 @@ export function NeuroTagLeaderboard({ tags, start, end, brand }: Props) {
     else { setSortKey(key); setSortDir(1) }
   }
 
-  const sorted = [...tags].sort((a, b) => {
+  const q = filter.trim().toLowerCase()
+  const visible = q
+    ? tags.filter(
+        (t) =>
+          t.tag_code.toLowerCase().includes(q) ||
+          t.hack_name.toLowerCase().includes(q) ||
+          t.category_name.toLowerCase().includes(q),
+      )
+    : tags
+
+  const sorted = [...visible].sort((a, b) => {
     const av = Number(a[sortKey] ?? 0)
     const bv = Number(b[sortKey] ?? 0)
     return sortDir * (bv - av)
@@ -280,10 +307,23 @@ export function NeuroTagLeaderboard({ tags, start, end, brand }: Props) {
   return (
     <>
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-stone-500 dark:text-night-500">
-            {tags.length} tags · Spend uses {creditMode}-credit · click a row to see ads
-          </p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-xs text-stone-500 dark:text-night-500">
+              {q ? `${sorted.length} of ${tags.length}` : tags.length} tags · Spend uses {creditMode}-credit · click a row to see ads
+            </p>
+            {q && (
+              <button
+                onClick={() => setFilter("")}
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-400 hover:bg-indigo-500/20"
+              >
+                <span className="truncate max-w-[140px]">filtered: {filter}</span>
+                <svg className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="flex rounded-lg border border-stone-200 dark:border-night-700 overflow-hidden text-xs">
             {(["split", "full"] as const).map((m) => (
               <button
@@ -372,6 +412,13 @@ export function NeuroTagLeaderboard({ tags, start, end, brand }: Props) {
                   </tr>
                 )
               })}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={12} className="px-3 py-8 text-center text-sm text-stone-400 dark:text-night-600">
+                    No tags match “{filter}”.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -13,9 +13,9 @@ export async function processExpireActions(_job: Job) {
   `
 
   if (expired.length > 0) {
-    const ids = expired.map((r) => r.id)
+    const ids = expired.map((r: { id: string }) => r.id)
     await prisma.auditLog.createMany({
-      data: ids.map((id) => ({
+      data: ids.map((id: string) => ({
         event: "action_expired",
         actor: "system",
         payload: { actionId: id },

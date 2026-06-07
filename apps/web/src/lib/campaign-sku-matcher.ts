@@ -2,10 +2,15 @@ export interface RawSkuRow {
   sku: string
   productTitle: string
   qty: number
-  unitCost: number        // effective_unit_cost_avg
-  asp: number | null      // avg_unit_price (GST-inclusive)
-  grossRevenue: number    // gross_line_revenue
-  netRevenueExGst: number // gross_line_revenue_ex_gst
+  unitCost: number          // pure ex-GST product cost per unit (placed_product_cost / qty)
+  shippingPerUnit: number   // real shipping per unit (placed_shipping_cost / qty) — was hardcoded 117
+  packagingPerUnit: number  // real packaging per unit (placed_packaging_cost / qty) — was hardcoded 10
+  rtoPerUnit: number        // real reverse-logistics cost per unit (rto_cost / qty)
+  gatewayPct: number        // effective gateway fee % on ex-GST revenue — was hardcoded 2
+  returnRatePct: number     // real return rate (returned_units / qty × 100) — was hardcoded 12
+  asp: number | null        // avg_unit_price (GST-inclusive)
+  grossRevenue: number      // gross_line_revenue (GST-inclusive, placement)
+  netRevenueExGst: number   // net_line_revenue_ex_gst (net of returns)
 }
 
 export interface RawCampaignRow {
@@ -19,7 +24,12 @@ export interface VariantData {
   sku: string
   qty: number
   qtyShare: number          // this variant's qty / product totalQty
-  cogs: number              // variant-specific, date-effective from Cube
+  cogs: number              // pure ex-GST product cost per unit (negotiation lever)
+  shippingPerUnit: number   // real shipping per unit (segregated from DB)
+  packagingPerUnit: number  // real packaging per unit (segregated from DB)
+  rtoPerUnit: number        // real reverse-logistics cost per unit
+  gatewayPct: number        // effective gateway fee % on ex-GST revenue
+  returnRatePct: number     // real return rate %
   asp: number | null        // variant-specific selling price
   grossRevenue: number
   netRevenueExGst: number
@@ -29,14 +39,19 @@ export interface VariantData {
 }
 
 export interface ProductGroup {
-  productBase: string      // "TH-198-UFOBALL"
-  productTitle: string     // from highest-qty variant
-  totalQty: number         // sum across variants
-  avgCogs: number          // qty-weighted average COGS
-  asp: number | null       // qty-weighted avg selling price
-  grossRevenue: number     // total gross revenue (incl GST)
-  netRevenueExGst: number  // total net revenue ex-GST
-  variants: string[]       // all variant SKU codes
+  productBase: string         // "TH-198-UFOBALL"
+  productTitle: string        // from highest-qty variant
+  totalQty: number            // sum across variants
+  avgCogs: number             // qty-weighted pure product cost per unit (ex-GST)
+  avgShippingPerUnit: number  // qty-weighted real shipping per unit
+  avgPackagingPerUnit: number // qty-weighted real packaging per unit
+  avgRtoPerUnit: number       // qty-weighted real reverse-logistics cost per unit
+  avgGatewayPct: number       // qty-weighted effective gateway fee %
+  avgReturnRatePct: number    // qty-weighted real return rate %
+  asp: number | null          // qty-weighted avg selling price
+  grossRevenue: number        // total gross revenue (incl GST)
+  netRevenueExGst: number     // total net revenue ex-GST
+  variants: string[]          // all variant SKU codes
   variantData: VariantData[]
   // Filled after campaign matching:
   adSpend: number
@@ -73,10 +88,19 @@ export function groupSkusByProduct(skus: RawSkuRow[]): ProductGroup[] {
   for (const [productBase, rows] of map) {
     const totalQty = rows.reduce((s, r) => s + r.qty, 0)
 
-    const avgCogs =
+    // Qty-weighted average of any per-unit / per-unit-rate field across variants.
+    // (For per-unit costs and the return rate this is exact: rate × qty = the total.)
+    const wAvg = (pick: (r: RawSkuRow) => number) =>
       totalQty > 0
-        ? rows.reduce((s, r) => s + r.unitCost * r.qty, 0) / totalQty
-        : rows[0]?.unitCost ?? 0
+        ? rows.reduce((s, r) => s + pick(r) * r.qty, 0) / totalQty
+        : pick(rows[0] ?? ({} as RawSkuRow)) || 0
+
+    const avgCogs = wAvg((r) => r.unitCost)
+    const avgShippingPerUnit = wAvg((r) => r.shippingPerUnit)
+    const avgPackagingPerUnit = wAvg((r) => r.packagingPerUnit)
+    const avgRtoPerUnit = wAvg((r) => r.rtoPerUnit)
+    const avgGatewayPct = wAvg((r) => r.gatewayPct)
+    const avgReturnRatePct = wAvg((r) => r.returnRatePct)
 
     const aspNumerator = rows.reduce((s, r) => (r.asp !== null ? s + r.asp * r.qty : s), 0)
     const aspQty = rows.reduce((s, r) => (r.asp !== null ? s + r.qty : s), 0)
@@ -92,6 +116,11 @@ export function groupSkusByProduct(skus: RawSkuRow[]): ProductGroup[] {
       qty: r.qty,
       qtyShare: totalQty > 0 ? r.qty / totalQty : 0,
       cogs: r.unitCost,
+      shippingPerUnit: r.shippingPerUnit,
+      packagingPerUnit: r.packagingPerUnit,
+      rtoPerUnit: r.rtoPerUnit,
+      gatewayPct: r.gatewayPct,
+      returnRatePct: r.returnRatePct,
       asp: r.asp,
       grossRevenue: r.grossRevenue,
       netRevenueExGst: r.netRevenueExGst,
@@ -105,6 +134,11 @@ export function groupSkusByProduct(skus: RawSkuRow[]): ProductGroup[] {
       productTitle: dominantRow.productTitle,
       totalQty,
       avgCogs: Math.round(avgCogs * 100) / 100,
+      avgShippingPerUnit: Math.round(avgShippingPerUnit * 100) / 100,
+      avgPackagingPerUnit: Math.round(avgPackagingPerUnit * 100) / 100,
+      avgRtoPerUnit: Math.round(avgRtoPerUnit * 100) / 100,
+      avgGatewayPct: Math.round(avgGatewayPct * 100) / 100,
+      avgReturnRatePct: Math.round(avgReturnRatePct * 100) / 100,
       asp,
       grossRevenue: Math.round(grossRevenue * 100) / 100,
       netRevenueExGst: Math.round(netRevenueExGst * 100) / 100,

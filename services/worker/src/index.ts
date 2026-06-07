@@ -1,6 +1,6 @@
 import pino from "pino"
 
-import { registerWorkers } from "./queues"
+import { registerWorkers } from "./queues.js"
 
 const logger = pino({ name: "worker" })
 

@@ -9,13 +9,9 @@ const fmt = (n: number) =>
 export function ProductSummaryCard({
   product,
   variant,
-  cogsShipping = 0,
-  packaging = 0,
 }: {
   product: ProductGroup
   variant?: VariantData
-  cogsShipping?: number
-  packaging?: number
 }) {
   if (variant) {
     const variantAsp =
@@ -33,7 +29,7 @@ export function ProductSummaryCard({
             ({(variant.qtyShare * 100).toFixed(0)}% of {product.productBase} qty)
           </span>
         </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           <MetricTile
             label="Units sold"
             value={variant.qty.toLocaleString("en-IN")}
@@ -41,9 +37,9 @@ export function ProductSummaryCard({
             compact
           />
           <MetricTile
-            label="Effective product cost"
-            value={fmt(Math.max(0, variant.cogs - cogsShipping - packaging))}
-            sub={`₹${Math.round(variant.cogs)} − ship ₹${cogsShipping} − pkg ₹${packaging}`}
+            label="Product cost / unit"
+            value={fmt(variant.cogs)}
+            sub={`+ ship ₹${Math.round(variant.shippingPerUnit)} + pkg ₹${Math.round(variant.packagingPerUnit)} = ₹${Math.round(variant.cogs + variant.shippingPerUnit + variant.packagingPerUnit)}`}
             compact
           />
           <MetricTile
@@ -55,6 +51,12 @@ export function ProductSummaryCard({
           <MetricTile
             label="Net rev (ex-GST)"
             value={variant.netRevenueExGst > 0 ? fmt(variant.netRevenueExGst) : "—"}
+            compact
+          />
+          <MetricTile
+            label="Returns / gateway"
+            value={`${variant.returnRatePct.toFixed(1)}%`}
+            sub={`RTO ₹${Math.round(variant.rtoPerUnit)}/u · gw ${variant.gatewayPct.toFixed(1)}%`}
             compact
           />
           <MetricTile
@@ -90,7 +92,7 @@ export function ProductSummaryCard({
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-stone-500 dark:text-night-500">
         Period data — {product.productBase}
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <MetricTile
           label="Units sold"
           value={product.totalQty.toLocaleString("en-IN")}
@@ -98,9 +100,9 @@ export function ProductSummaryCard({
           compact
         />
         <MetricTile
-          label="Effective product cost"
-          value={fmt(Math.max(0, product.avgCogs - cogsShipping - packaging))}
-          sub={`₹${Math.round(product.avgCogs)} − ship ₹${cogsShipping} − pkg ₹${packaging}`}
+          label="Product cost / unit"
+          value={fmt(product.avgCogs)}
+          sub={`+ ship ₹${Math.round(product.avgShippingPerUnit)} + pkg ₹${Math.round(product.avgPackagingPerUnit)} = ₹${Math.round(product.avgCogs + product.avgShippingPerUnit + product.avgPackagingPerUnit)}`}
           compact
         />
         <MetricTile
@@ -112,6 +114,12 @@ export function ProductSummaryCard({
         <MetricTile
           label="Net rev (ex-GST)"
           value={product.netRevenueExGst > 0 ? fmt(product.netRevenueExGst) : "—"}
+          compact
+        />
+        <MetricTile
+          label="Returns / gateway"
+          value={`${product.avgReturnRatePct.toFixed(1)}%`}
+          sub={`RTO ₹${Math.round(product.avgRtoPerUnit)}/u · gw ${product.avgGatewayPct.toFixed(1)}%`}
           compact
         />
         <MetricTile

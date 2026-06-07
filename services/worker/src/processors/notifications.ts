@@ -24,7 +24,7 @@ interface NotificationData {
 const RISK_EMOJI: Record<string, string> = { high: "🔴", medium: "🟡", low: "🟢" }
 
 export async function sendApprovalNotification(data: Record<string, unknown>) {
-  const d = data as NotificationData
+  const d = data as unknown as NotificationData
   const riskEmoji = RISK_EMOJI[d.riskLevel?.toLowerCase()] ?? "⚪"
   const confidencePct = Math.round((d.confidence ?? 0) * 100)
 

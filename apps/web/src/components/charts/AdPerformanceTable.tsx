@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { fmtCurrency, fmtCount, fmtPct } from "./format"
+import { AdPlacementBreakdown } from "./AdPlacementBreakdown"
 
 const C  = "meta_neurotag_analysis"  // tag map source
 const AP = "meta_ad_performance"     // ad leaderboard source
@@ -110,13 +111,35 @@ type SortKey = "spend" | "roas" | "ctr" | "hook_rate" | "cpa" | "orders"
 
 interface Props {
   rows: AdRow[]
+  /** When `focusNonce` changes, seed the search box with this query… */
+  focusQuery?: string
+  /** …and expand + scroll to this ad. */
+  focusAdId?: string
+  focusNonce?: number
+  /** Date range + brand for the lazy per-ad placement breakdown. */
+  start?: string
+  end?: string
+  brand?: number
 }
 
-export function AdPerformanceTable({ rows }: Props) {
+export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0, start, end, brand }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("spend")
   const [sortDir, setSortDir] = useState<1 | -1>(1)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [search, setSearch] = useState("")
+
+  // Respond to a search-result selection coming from the universal search.
+  useEffect(() => {
+    if (!focusNonce) return
+    setSearch(focusQuery ?? "")
+    if (focusAdId) {
+      setExpanded(focusAdId)
+      requestAnimationFrame(() => {
+        document.getElementById(`ciq-ad-${focusAdId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1))
@@ -191,6 +214,7 @@ export function AdPerformanceTable({ rows }: Props) {
                 <>
                   <tr
                     key={ad.ad_id}
+                    id={`ciq-ad-${ad.ad_id}`}
                     onClick={() => setExpanded(isExpanded ? null : ad.ad_id)}
                     className={`border-b border-stone-100 dark:border-night-850 cursor-pointer transition-colors ${
                       isExpanded
@@ -298,6 +322,17 @@ export function AdPerformanceTable({ rows }: Props) {
                             </div>
                           ))}
                         </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {isExpanded && start && end && brand !== undefined && (
+                    <tr key={`${ad.ad_id}-placement`} className="bg-stone-50 dark:bg-night-900 border-b border-stone-100 dark:border-night-850">
+                      <td colSpan={8} className="px-3 pb-3 align-top">
+                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
+                          Placement &amp; Platform
+                        </p>
+                        <AdPlacementBreakdown adId={ad.ad_id} start={start} end={end} brand={brand} />
                       </td>
                     </tr>
                   )}

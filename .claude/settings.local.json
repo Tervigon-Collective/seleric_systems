@@ -58,7 +58,9 @@
       "Bash(pnpm dev *)",
       "Bash(powershell -Command \"Start-Sleep -Seconds 15\")",
       "Bash(docker version *)",
-      "PowerShell(pnpm dev -- --ui=stream)"
+      "PowerShell(pnpm dev -- --ui=stream)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)"
     ]
   }
 }

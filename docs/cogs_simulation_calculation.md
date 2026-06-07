@@ -7,17 +7,23 @@ Every output is traceable to an input.
 
 ## 1. Inputs (per SKU, per period)
 
+**Data source:** `gold.fct_order_items` (Cube full view `gold__fct_order_items`), grouped by SKU
+over the selected period. Costs are **already segregated** in the gold layer, so the per-unit
+rates below are derived directly — nothing is stripped from a blended cost, and nothing is
+hardcoded.
+
 | Symbol | Name | Source | Notes |
 |---|---|---|---|
-| `ASP` | Average selling price (gross) | Orders data | Includes GST if tax-inclusive |
-| `PRODUCT_COST` | Pure vendor / product cost per unit | `effective_unit_cost_avg − COGS_SHIP − PKG_CONST` | Stripped of embedded ship/pkg |
-| `COGS_SHIP` | Shipping component embedded in DB COGS | Constant = **117** | Stripped to isolate product cost |
-| `PKG_CONST` | Packaging component embedded in DB COGS | Constant = **10** | Stripped to isolate product cost |
-| `EFFECTIVE_COGS` | Full unit cost as stored in DB | `effective_unit_cost_avg` | = PRODUCT_COST + COGS_SHIP + PKG_CONST |
+| `ASP` | Average selling price (gross) | `avg_unit_price` (fallback `gross_line_revenue / qty`) | Includes GST if tax-inclusive |
+| `PRODUCT_COST` | Pure vendor / product cost per unit | `placed_product_cost / quantity` | Already ex-GST and pure — the negotiation lever |
+| `COGS_SHIP` | Shipping cost per unit | `placed_shipping_cost / quantity` | Real per-SKU value (was hardcoded ≈117) |
+| `PKG_CONST` | Packaging cost per unit | `placed_packaging_cost / quantity` | Real per-SKU value (was hardcoded ≈10) |
+| `EFFECTIVE_COGS` | Full unit cost | `PRODUCT_COST + COGS_SHIP + PKG_CONST` | Reconstructed from the segregated parts |
 | `CAC` | Cost per acquired order | `Ad Spend / Orders` | 0 or null if ad_spend = 0 |
-| `SHIP` | Outbound courier / shipping cost per unit | Config / cost sheet | Separate from COGS_SHIP |
-| `PGW%` | Payment gateway fee % | Config | Applied to net revenue |
-| `RTO%` | Return / RTO provision % | Config | Applied to net revenue |
+| `SHIP` | Extra outbound courier cost per unit | Config / cost sheet | Separate from `COGS_SHIP`; default 0 |
+| `PGW%` | Payment gateway fee % | `placed_gateway_fee / gross_line_revenue_ex_gst × 100` | Effective rate (was hardcoded 2%) |
+| `RTO%` | Return / RTO provision % | `returned_units / quantity × 100` | **Measured return rate** (was hardcoded 12%) |
+| `RTO_COST/u` | Real reverse-logistics cost per unit | `rto_cost / quantity` | Informational; not the provision lever |
 | `COD` | COD charge per unit | Config | 0 if not COD |
 | `MKT%` | Marketplace fee % | Config | 0 for D2C |
 | `TAX_RATE` | GST rate | Config | e.g. 0.18 for 18% |
@@ -25,19 +31,24 @@ Every output is traceable to an input.
 | `TARGET_MARGIN%` | Desired net profit margin | Simulation input | e.g. 0.10 |
 | `TARGET_PROFIT` | Desired absolute profit (₹) | Simulation input | e.g. ₹80,000 |
 
+> **Aggregation note:** the gold `*_per_unit` measures (`unit_cost`, `shipping_cost_per_unit`, …)
+> are `sum`-aggregated, so they must **not** be queried directly at SKU grain. Always derive
+> per-unit rates as `placement_cost_total / quantity` (exact qty-weighted average).
+
 ### COGS decomposition
 
 ```
-EFFECTIVE_COGS  = PRODUCT_COST + COGS_SHIP + PKG_CONST
-                = PRODUCT_COST + 117 + 10
-                = PRODUCT_COST + 127
+PRODUCT_COST    = placed_product_cost / quantity      (pure, ex-GST)
+COGS_SHIP       = placed_shipping_cost / quantity      (real per-SKU)
+PKG_CONST       = placed_packaging_cost / quantity     (real per-SKU)
 
-PRODUCT_COST    = EFFECTIVE_COGS − 117 − 10
+EFFECTIVE_COGS  = PRODUCT_COST + COGS_SHIP + PKG_CONST
 ```
 
-> The DB field `effective_unit_cost_avg` stores `EFFECTIVE_COGS`.
-> Strip the constants to get `PRODUCT_COST`, which is the negotiation lever.
-> `COGS_SHIP` and `PKG_CONST` are fixed — they are NOT negotiable per-unit costs.
+> The gold layer stores product cost, shipping and packaging as **separate** placement totals.
+> Divide each by `quantity` for the per-unit rate. `PRODUCT_COST` is the negotiation lever;
+> `COGS_SHIP` and `PKG_CONST` are fixed per-unit logistics costs held constant in break-even math.
+> When rolling variants up to a product, qty-weight each per-unit rate by variant quantity.
 
 ---
 
@@ -334,7 +345,7 @@ Additional rules:
 ## 11. Formula dependency map
 
 ```
-EFFECTIVE_COGS  = PRODUCT_COST + COGS_SHIP(117) + PKG_CONST(10)
+EFFECTIVE_COGS  = PRODUCT_COST + COGS_SHIP + PKG_CONST   (all per-SKU from gold.fct_order_items)
 
 ASP
  └─ NET_REV  (÷ GST factor)
@@ -370,10 +381,10 @@ COGS_SHIP, PKG_CONST  (fixed constants — held constant in all break-even/scena
 ```
 Inputs:
   ASP              = ₹980
-  EFFECTIVE_COGS   = ₹430  (from DB: effective_unit_cost_avg)
-  PRODUCT_COST     = 430 − 117 − 10 = ₹303  (displayed as "Effective product cost")
-  COGS_SHIP        = ₹117 (constant)
-  PKG_CONST        = ₹10  (constant)
+  PRODUCT_COST     = ₹303  (placed_product_cost / quantity — pure, ex-GST)
+  COGS_SHIP        = ₹117  (placed_shipping_cost / quantity)
+  PKG_CONST        = ₹10   (placed_packaging_cost / quantity)
+  EFFECTIVE_COGS   = 303 + 117 + 10 = ₹430
   CAC              = ₹620
   SHIP             = ₹90  (outbound courier)
   RTO%             = 12%
@@ -421,10 +432,10 @@ Step 7 — Scale (not applicable):
 ```
 Inputs:
   ASP              = ₹1,850
-  EFFECTIVE_COGS   = ₹476  (from DB: effective_unit_cost_avg)
-  PRODUCT_COST     = 476 − 117 − 10 = ₹349  (displayed as "Effective product cost")
-  COGS_SHIP        = ₹117 (constant)
-  PKG_CONST        = ₹10  (constant)
+  PRODUCT_COST     = ₹349  (placed_product_cost / quantity — pure, ex-GST)
+  COGS_SHIP        = ₹117  (placed_shipping_cost / quantity)
+  PKG_CONST        = ₹10   (placed_packaging_cost / quantity)
+  EFFECTIVE_COGS   = 349 + 117 + 10 = ₹476
   CAC              = ₹538
   SHIP             = ₹117  (outbound courier, default)
   RTO%             = 8%
@@ -552,5 +563,5 @@ def simulate_sku_profitability(
 
 ---
 
-*Last updated: 2026-05-25*
-*Formula version: v1.1 — COGS split into PRODUCT_COST + COGS_SHIP(117) + PKG_CONST(10)*
+*Last updated: 2026-06-08*
+*Formula version: v1.2 — segregated COGS sourced per-SKU from gold.fct_order_items; shipping, packaging, return rate (RTO%) and gateway % now real/measured instead of hardcoded (117 / 10 / 12% / 2%)*

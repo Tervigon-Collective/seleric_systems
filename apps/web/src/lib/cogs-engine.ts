@@ -138,15 +138,18 @@ export function simulate(inputs: SimInputs): SimResult {
   }
 }
 
+// Fallback assumptions used only until a product/variant is selected — every value
+// below is then overwritten by real per-SKU data from gold.fct_order_items
+// (pure product cost, segregated shipping/packaging, measured return & gateway rates).
 export const DEFAULT_INPUTS: SimInputs = {
   asp: 999,
-  cogs: 223,  // product cost only (effective COGS 350 − shipping 117 − packaging 10)
-  cogsShipping: 117,
-  packaging: 10,
+  cogs: 164,  // pure ex-GST product cost per unit (DB-sourced once a SKU is selected)
+  cogsShipping: 117,  // segregated shipping per unit — real value loaded per SKU
+  packaging: 10,  // segregated packaging per unit — real value loaded per SKU
   cac: 500,
   ship: 0,  // additional outbound cost beyond what's already in cogsShipping (default: none)
-  rtoPercent: 12,
-  pgwPercent: 2,
+  rtoPercent: 12,  // return provision % — replaced by measured return rate per SKU
+  pgwPercent: 2,  // gateway fee % — replaced by effective rate per SKU
   gstInclusive: true,
   taxRate: 18,
   targetMarginPercent: 10,

@@ -14,7 +14,7 @@ export default function ApprovalsPage() {
   const handleActioned = useCallback(
     (id: string) => {
       mutate(
-        (prev: unknown[]) => (prev ? prev.filter((a: { id: string }) => a.id !== id) : []),
+        (prev: unknown[]) => (prev ? prev.filter((a: any) => a.id !== id) : []),
         { revalidate: false },
       )
     },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { ChartCard } from "@/components/charts/ChartCard"
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart"
 import { NeuroTagLeaderboard } from "@/components/charts/NeuroTagLeaderboard"
@@ -8,8 +8,10 @@ import { AdPerformanceTable, parseAdLeaderboard } from "@/components/charts/AdPe
 import { AdsFunnelView } from "@/components/charts/AdsFunnelView"
 import { TagStageHeatmap } from "@/components/charts/TagStageHeatmap"
 import { VideoFunnelPanel } from "@/components/charts/VideoFunnelPanel"
+import { UniversalSearch } from "@/components/charts/UniversalSearch"
 import { TrendChart } from "@/components/chat/TrendChart"
 import type { ScoredTag } from "@/lib/dashboard/neurotag-scorer"
+import { buildCreativeIndex, type CreativeSearchSelect } from "@/lib/dashboard/creative-search"
 
 type Tab = "funnel" | "tags" | "ads" | "tagfunnel"
 
@@ -55,10 +57,33 @@ export function CreativeIQTabs({
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("funnel")
 
+  // Focus signals pushed into the Ad / Tag tabs when a search result is picked.
+  // `nonce` increments on every selection so the receiving effect re-runs even
+  // when the same item is chosen twice.
+  const [adFocus, setAdFocus]   = useState({ query: "", adId: "", nonce: 0 })
+  const [tagFocus, setTagFocus] = useState({ text: "", tagCode: "", nonce: 0 })
+
   const adRows = parseAdLeaderboard(adLeaderboard, adTagMap)
+  const searchIndex = useMemo(() => buildCreativeIndex(scoredTags, adRows), [scoredTags, adRows])
+
+  function handleSearchSelect(sel: CreativeSearchSelect) {
+    if (sel.kind === "ad") {
+      setActiveTab("ads")
+      setAdFocus((f) => ({ query: sel.adName, adId: sel.adId, nonce: f.nonce + 1 }))
+    } else if (sel.kind === "tag") {
+      setActiveTab("tags")
+      setTagFocus((f) => ({ text: sel.hackName, tagCode: sel.tagCode, nonce: f.nonce + 1 }))
+    } else {
+      setActiveTab("tags")
+      setTagFocus((f) => ({ text: sel.category, tagCode: "", nonce: f.nonce + 1 }))
+    }
+  }
 
   return (
     <div className="space-y-4">
+      {/* Universal search — ads · neuro tags · categories */}
+      <UniversalSearch index={searchIndex} onSelect={handleSearchSelect} />
+
       {/* Tab bar */}
       <div className="flex items-center gap-1 border-b border-stone-200 dark:border-night-800">
         {TABS.map((tab) => (
@@ -116,7 +141,15 @@ export function CreativeIQTabs({
             subtitle="All tags ranked by score · Hook % = 3s scroll-stop rate · toggle split/full credit"
             cube="meta_neurotag_analysis"
           >
-            <NeuroTagLeaderboard tags={scoredTags} start={start} end={end} brand={brand} />
+            <NeuroTagLeaderboard
+              tags={scoredTags}
+              start={start}
+              end={end}
+              brand={brand}
+              focusText={tagFocus.text}
+              focusTagCode={tagFocus.tagCode}
+              focusNonce={tagFocus.nonce}
+            />
           </ChartCard>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -167,11 +200,19 @@ export function CreativeIQTabs({
       {activeTab === "ads" && (
         <ChartCard
           title="Ad Performance with Tag Mapping"
-          subtitle="Every active ad · expand a row for full tag list and video metrics · click header to sort"
+          subtitle="Every active ad · expand a row for tags, video metrics & placement/platform split · click header to sort"
           cube="meta_neurotag_analysis"
           className="xl:col-span-2"
         >
-          <AdPerformanceTable rows={adRows} />
+          <AdPerformanceTable
+            rows={adRows}
+            focusQuery={adFocus.query}
+            focusAdId={adFocus.adId}
+            focusNonce={adFocus.nonce}
+            start={start}
+            end={end}
+            brand={brand}
+          />
         </ChartCard>
       )}
 

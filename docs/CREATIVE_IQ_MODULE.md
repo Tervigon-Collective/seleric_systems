@@ -155,6 +155,11 @@ Pulls **all** ads from `meta_ad_performance` (tagged + untagged), joins NT tag c
 - **Expand a row** → full neuro-tag list + Video Performance: Hook Rate, Completion (`hold_rate_p100`), Thruplay, ₹/Thruplay, Link Clicks, Purchase Value, ROAS
 - Color thresholds: ROAS 2.5/1.5, Hook% 20/10
 
+**Placement & Platform split** (in the expanded row) — [AdPlacementBreakdown.tsx](../apps/web/src/components/charts/AdPlacementBreakdown.tsx), lazily fetched per ad from [/api/ads/placement](../apps/web/src/app/api/ads/placement/route.ts):
+- Source: **`gold__fct_meta_ads_breakdown_daily`** (the raw "all columns" view) filtered to `breakdown_type = placement` and the single `ad_id`. The curated `meta_ad_breakdown` cube drops `ad_id`; this raw view keeps it, so placement IS available at **ad grain**.
+- Platform rollup chips (Instagram / Facebook / Audience Network / Threads, % of ad spend) + per-placement table: Spend · % of ad · Impr · CTR · Hook% (`video_views_3s/impr`) · Thruplay · Orders (pixel `purchases`) · CPA.
+- ⚠️ This breakdown table has **no `purchase_value`** → **no revenue/ROAS at placement grain**; orders are Meta-pixel `purchases`. Never sum across `breakdown_type` values (~8× overcount) — only the `placement` slice is requested.
+
 ---
 
 ### Tab 4 — Tag Funnel (single-tag video retention)

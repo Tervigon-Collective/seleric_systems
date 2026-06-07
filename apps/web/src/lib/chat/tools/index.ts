@@ -4,6 +4,7 @@ import { createPnlTools, getPnlInstructions } from "./pnl-tools"
 import { queryTools, getQueryInstructions } from "./query-tools"
 import { createSchemaTool } from "./schema-tool"
 import { pythonTools, getPythonInstructions } from "./python-tool"
+import { createCreativeIQTools, getCreativeIQInstructions } from "./creative-iq-tools"
 
 export function createChatTools(schema: SchemaCache) {
   return {
@@ -11,6 +12,7 @@ export function createChatTools(schema: SchemaCache) {
     ...queryTools,
     ...createSchemaTool(schema),
     ...pythonTools,
+    ...createCreativeIQTools(),
   }
 }
 
@@ -21,5 +23,6 @@ export function buildDomainInstructions(schema: SchemaCache): string {
     getPnlInstructions(schema),
     getQueryInstructions(),
     getPythonInstructions(),
+    getCreativeIQInstructions(),
   ].join("\n\n")
 }

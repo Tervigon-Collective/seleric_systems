@@ -37,6 +37,10 @@ const RECOMMEND_STYLE: Record<Classification, string> = {
     "border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-200",
 }
 
+function round1(n: number) {
+  return Math.round(n * 10) / 10
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -115,7 +119,12 @@ export default function CogsSimulationPage() {
               : null
         setInputs((prev) => ({
           ...prev,
-          cogs: variant.cogs > 0 ? Math.max(0, Math.round(variant.cogs) - prev.cogsShipping - prev.packaging) : prev.cogs,
+          // cogs is now the pure product cost straight from the DB — no constants stripped.
+          cogs: variant.cogs > 0 ? Math.round(variant.cogs) : prev.cogs,
+          cogsShipping: variant.shippingPerUnit > 0 ? Math.round(variant.shippingPerUnit) : prev.cogsShipping,
+          packaging: variant.packagingPerUnit > 0 ? Math.round(variant.packagingPerUnit) : prev.packaging,
+          rtoPercent: variant.returnRatePct > 0 ? round1(variant.returnRatePct) : prev.rtoPercent,
+          pgwPercent: variant.gatewayPct > 0 ? round1(variant.gatewayPct) : prev.pgwPercent,
           cac: variant.cac > 0 ? Math.round(variant.cac) : prev.cac,
           asp: variantAsp ?? prev.asp,
         }))
@@ -133,7 +142,12 @@ export default function CogsSimulationPage() {
 
     setInputs((prev) => ({
       ...prev,
-      cogs: product.avgCogs > 0 ? Math.max(0, Math.round(product.avgCogs) - prev.cogsShipping - prev.packaging) : prev.cogs,
+      // cogs is now the pure product cost straight from the DB — no constants stripped.
+      cogs: product.avgCogs > 0 ? Math.round(product.avgCogs) : prev.cogs,
+      cogsShipping: product.avgShippingPerUnit > 0 ? Math.round(product.avgShippingPerUnit) : prev.cogsShipping,
+      packaging: product.avgPackagingPerUnit > 0 ? Math.round(product.avgPackagingPerUnit) : prev.packaging,
+      rtoPercent: product.avgReturnRatePct > 0 ? round1(product.avgReturnRatePct) : prev.rtoPercent,
+      pgwPercent: product.avgGatewayPct > 0 ? round1(product.avgGatewayPct) : prev.pgwPercent,
       cac: product.cac > 0 ? Math.round(product.cac) : prev.cac,
       asp: derivedAsp ?? prev.asp,
     }))
@@ -332,12 +346,7 @@ export default function CogsSimulationPage() {
                   Variants: {selectedProduct.variants.join(", ")}
                 </p>
               )}
-              <ProductSummaryCard
-                product={selectedProduct}
-                variant={selectedVariant}
-                cogsShipping={inputs.cogsShipping}
-                packaging={inputs.packaging}
-              />
+              <ProductSummaryCard product={selectedProduct} variant={selectedVariant} />
               <p
                 className={`rounded-lg border px-3 py-2 text-xs leading-snug ${RECOMMEND_STYLE[result.classification]}`}
               >

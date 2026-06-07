@@ -49,15 +49,15 @@ export async function fetchNeurotagData(
   return runDashboardCubeFetch(async () => {
     const [tagLeaderboard, categoryBreakdown, spendTrend, adLeaderboard, adTagMap] =
       await Promise.all([
-        // Tag-level leaderboard with additive + video ratio measures
+        // Ad-level leaderboard with additive + video ratio measures (grouped by ad_id)
         safeCubeQuery(
           q(
             {
               measures: [...ADDITIVE, ...RATIO],
-              dimensions: [`${C}.tag_code`, `${C}.category_name`, `${C}.hack_name`],
+              dimensions: [`${C}.ad_id`, `${C}.ad_name`, `${C}.tag_code`, `${C}.category_name`, `${C}.hack_name`],
               timeDimensions: [td(`${C}.report_date`, range)],
               order: { [`${C}.spend_sc`]: "desc" },
-              limit: 150,
+              limit: 500,
             },
             brand,
           ),

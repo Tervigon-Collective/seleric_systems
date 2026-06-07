@@ -1,7 +1,7 @@
 import type { Job } from "bullmq"
 import pino from "pino"
 
-import { sendApprovalNotification } from "../processors/notifications"
+import { sendApprovalNotification } from "../processors/notifications.js"
 
 const logger = pino({ name: "job:send-notification" })
 

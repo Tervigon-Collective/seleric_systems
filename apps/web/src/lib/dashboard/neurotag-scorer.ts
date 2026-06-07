@@ -9,6 +9,8 @@ export type SignalClass =
   | "needs_more_data"
 
 export interface TagMetrics {
+  ad_id: string
+  ad_name: string
   tag_code: string
   hack_name: string
   category_name: string
@@ -62,6 +64,8 @@ function n(v: unknown): number {
 
 export function parseTagRows(rows: Record<string, unknown>[]): TagMetrics[] {
   return rows.map((r) => ({
+    ad_id:                String(r[`${C}.ad_id`] ?? ""),
+    ad_name:              String(r[`${C}.ad_name`] ?? "—"),
     tag_code:             String(r[`${C}.tag_code`] ?? "__untagged__"),
     hack_name:            String(r[`${C}.hack_name`] ?? "—"),
     category_name:        String(r[`${C}.category_name`] ?? "—"),

@@ -89,13 +89,17 @@ export function DateRangeSummaryPanel({
             ? Math.round(p.asp)
             : sharedInputs.asp
 
-      const cogs =
-        p.avgCogs > 0
-          ? Math.max(0, Math.round(p.avgCogs) - sharedInputs.cogsShipping - sharedInputs.packaging)
-          : sharedInputs.cogs
+      // avgCogs is now the pure product cost; ship/pkg/return%/gateway% come from each
+      // product's own segregated DB data (falling back to shared config when absent).
+      const cogs = p.avgCogs > 0 ? Math.round(p.avgCogs) : sharedInputs.cogs
+      const cogsShipping = p.avgShippingPerUnit > 0 ? Math.round(p.avgShippingPerUnit) : sharedInputs.cogsShipping
+      const packaging = p.avgPackagingPerUnit > 0 ? Math.round(p.avgPackagingPerUnit) : sharedInputs.packaging
+      const rtoPercent = p.avgReturnRatePct > 0 ? p.avgReturnRatePct : sharedInputs.rtoPercent
+      const pgwPercent = p.avgGatewayPct > 0 ? p.avgGatewayPct : sharedInputs.pgwPercent
       const cac = p.cac > 0 ? Math.round(p.cac) : sharedInputs.cac
 
-      const result = simulate({ ...sharedInputs, asp, cogs, cac })
+      const result = simulate({ ...sharedInputs, asp, cogs, cac, cogsShipping, packaging, rtoPercent, pgwPercent })
+      const effectiveCogs = cogs + cogsShipping + packaging
       return {
         productBase: p.productBase,
         productTitle: p.productTitle,
@@ -106,8 +110,8 @@ export function DateRangeSummaryPanel({
         grossRevenue: p.grossRevenue,
         totalQty: p.totalQty,
         asp,
-        effectiveCogs: p.avgCogs > 0 ? Math.round(p.avgCogs) : cogs + sharedInputs.cogsShipping + sharedInputs.packaging,
-        totalCogs: Math.round(p.avgCogs * p.totalQty),
+        effectiveCogs,
+        totalCogs: Math.round(effectiveCogs * p.totalQty),
         cogs,
         cac,
         adSpend: p.adSpend,
@@ -306,7 +310,7 @@ export function DateRangeSummaryPanel({
           {filtered.length} of {entries.length} product{entries.length !== 1 ? "s" : ""}
         </span>
         <span className="text-[10px] text-stone-400 dark:text-night-600">
-          Net Profit/u uses shared config assumptions
+          Costs, returns &amp; gateway from live data · CAC &amp; targets from shared config
         </span>
       </div>
     </div>

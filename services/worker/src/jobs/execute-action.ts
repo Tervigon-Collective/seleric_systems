@@ -2,9 +2,9 @@ import type { Job } from "bullmq"
 import pino from "pino"
 import { prisma } from "@multiagent/db"
 
-import { recordOutcomeQueue } from "../queues"
-import { executePipeboardWrite } from "../processors/pipeboard"
-import { executeShopifyWrite } from "../processors/shopify"
+import { recordOutcomeQueue } from "../queues.js"
+import { executePipeboardWrite } from "../processors/pipeboard.js"
+import { executeShopifyWrite } from "../processors/shopify.js"
 
 const logger = pino({ name: "job:execute-action" })
 
@@ -45,7 +45,7 @@ export async function processExecuteAction(job: Job) {
       data: {
         status: "EXECUTED",
         executedAt: new Date(),
-        executionResult: { beforeState, response, executor: agent },
+        executionResult: { beforeState, response, executor: agent } as any,
       },
     })
 
@@ -54,7 +54,7 @@ export async function processExecuteAction(job: Job) {
         signalId,
         event: "action_executed",
         actor: agent,
-        payload: { actionId, actionType, beforeState },
+        payload: { actionId, actionType, beforeState } as any,
       },
     })
 

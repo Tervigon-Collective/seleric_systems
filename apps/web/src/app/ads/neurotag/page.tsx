@@ -64,14 +64,14 @@ export default async function NeuroTagPage({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
-            label: "Tags scored",
+            label: "Ads scored",
             value: scoredTags.filter((t) => t.classification !== "needs_more_data").length,
-            sub:   `of ${scoredTags.length} unique tags active this period`,
+            sub:   `of ${scoredTags.length} unique ads active this period`,
           },
           {
             label: "Strong winners",
             value: scoredTags.filter((t) => t.classification === "strong_winner").length,
-            sub:   "ROAS ≥ 2.5×",
+            sub:   "ROAS ≥ 2.5× & CTR ≥ 2.5%",
           },
           {
             label: "Misleading hooks",

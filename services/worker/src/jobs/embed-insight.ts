@@ -1,7 +1,7 @@
 import type { Job } from "bullmq"
 import pino from "pino"
 import { prisma } from "@multiagent/db"
-import { embedText } from "../lib/anthropic"
+import { embedText } from "../lib/anthropic.js"
 
 const logger = pino({ name: "job:embed-insight" })
 

@@ -1,11 +1,11 @@
 import { Queue, Worker } from "bullmq"
 
-import { processEmbedInsight } from "./jobs/embed-insight"
-import { processExecuteAction } from "./jobs/execute-action"
-import { processExpireActions } from "./jobs/expire-actions"
-import { processRecordOutcome } from "./jobs/record-outcome"
-import { processSendNotification } from "./jobs/send-notification"
-import { redis } from "./lib/redis"
+import { processEmbedInsight } from "./jobs/embed-insight.js"
+import { processExecuteAction } from "./jobs/execute-action.js"
+import { processExpireActions } from "./jobs/expire-actions.js"
+import { processRecordOutcome } from "./jobs/record-outcome.js"
+import { processSendNotification } from "./jobs/send-notification.js"
+import { redis } from "./lib/redis.js"
 
 export const QUEUE_EXECUTE_ACTION = "execute-action"
 export const QUEUE_SEND_NOTIFICATION = "send-notification"

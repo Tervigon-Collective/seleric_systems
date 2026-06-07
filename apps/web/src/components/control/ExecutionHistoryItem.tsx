@@ -130,13 +130,13 @@ export function ExecutionHistoryItem({ action }: ExecutionHistoryItemProps) {
               </pre>
             </div>
           )}
-          {action.executionResult?.response && (
+          {!!(action.executionResult?.response) && (
             <div>
               <p className="text-xs font-semibold text-stone-400 dark:text-night-500 uppercase tracking-wide mb-1">
                 Execution Response
               </p>
               <pre className="text-xs bg-stone-50 dark:bg-night-850 rounded p-2 overflow-x-auto max-h-32">
-                {JSON.stringify(action.executionResult.response, null, 2)}
+                {JSON.stringify(action.executionResult?.response as any, null, 2)}
               </pre>
             </div>
           )}
