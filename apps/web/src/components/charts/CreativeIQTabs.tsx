@@ -5,16 +5,18 @@ import { ChartCard } from "@/components/charts/ChartCard"
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart"
 import { NeuroTagLeaderboard } from "@/components/charts/NeuroTagLeaderboard"
 import { AdPerformanceTable, parseAdLeaderboard } from "@/components/charts/AdPerformanceTable"
+import { AdsFunnelView } from "@/components/charts/AdsFunnelView"
 import { VideoFunnelPanel } from "@/components/charts/VideoFunnelPanel"
 import { TrendChart } from "@/components/chat/TrendChart"
 import type { ScoredTag } from "@/lib/dashboard/neurotag-scorer"
 
-type Tab = "tags" | "ads" | "funnel"
+type Tab = "funnel" | "tags" | "ads" | "tagfunnel"
 
 const TABS: { key: Tab; label: string; desc: string }[] = [
-  { key: "tags",   label: "Tag View",  desc: "Score every neuro-tag" },
-  { key: "ads",    label: "Ad View",   desc: "Per-ad with tag chips" },
-  { key: "funnel", label: "Funnel",    desc: "Video retention analysis" },
+  { key: "funnel",    label: "Funnel",     desc: "Per-stage winners & tags" },
+  { key: "tags",      label: "Tag View",   desc: "Score every neuro-tag" },
+  { key: "ads",       label: "Ad View",    desc: "Per-ad with tag chips" },
+  { key: "tagfunnel", label: "Tag Funnel", desc: "One tag's video retention" },
 ]
 
 interface Props {
@@ -24,6 +26,9 @@ interface Props {
   spendTrend: Record<string, unknown>[]
   adLeaderboard: Record<string, unknown>[]
   adTagMap: Record<string, unknown>[]
+  funnelAdRows: Record<string, unknown>[]
+  funnelTotals: Record<string, unknown>[]
+  funnelTagMap: Record<string, unknown>[]
   start: string
   end: string
   brand: number
@@ -36,11 +41,14 @@ export function CreativeIQTabs({
   spendTrend,
   adLeaderboard,
   adTagMap,
+  funnelAdRows,
+  funnelTotals,
+  funnelTagMap,
   start,
   end,
   brand,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("tags")
+  const [activeTab, setActiveTab] = useState<Tab>("funnel")
 
   const adRows = parseAdLeaderboard(adLeaderboard, adTagMap)
 
@@ -65,6 +73,22 @@ export function CreativeIQTabs({
           </button>
         ))}
       </div>
+
+      {/* Funnel tab — stage-centric ads funnel (default) */}
+      {activeTab === "funnel" && (
+        <ChartCard
+          title="Ads Funnel — Reach → Impressions → video depth → Order"
+          subtitle="Click a stage to see the ads that won or lost it, and the neuro tags driving each step"
+          cube="meta_ad_performance"
+          className="xl:col-span-2"
+        >
+          <AdsFunnelView
+            adRows={funnelAdRows}
+            funnelTotals={funnelTotals}
+            adTagMap={funnelTagMap}
+          />
+        </ChartCard>
+      )}
 
       {/* Tags tab */}
       {activeTab === "tags" && (
@@ -133,8 +157,8 @@ export function CreativeIQTabs({
         </ChartCard>
       )}
 
-      {/* Funnel tab */}
-      {activeTab === "funnel" && (
+      {/* Tag Funnel tab — single-tag video retention */}
+      {activeTab === "tagfunnel" && (
         <ChartCard
           title="Video Funnel by Tag"
           subtitle="Scroll-stop → 15s hold → 50% view → completion → link click → order · red bar = biggest funnel gap"

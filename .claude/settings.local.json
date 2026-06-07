@@ -54,7 +54,11 @@
       "Bash(docker-compose config *)",
       "Bash(xargs grep -l \"approval\\\\|Approval\")",
       "Bash(echo \" [exit:$?]\")",
-      "mcp__claude_ai_Seleric__cube_channel_pnl"
+      "mcp__claude_ai_Seleric__cube_channel_pnl",
+      "Bash(pnpm dev *)",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 15\")",
+      "Bash(docker version *)",
+      "PowerShell(pnpm dev -- --ui=stream)"
     ]
   }
 }

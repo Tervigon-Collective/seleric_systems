@@ -4,6 +4,7 @@ import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-fil
 import { dateRangeLabel, parseDashboardDateRange, type DashboardSearchParams } from "@/lib/dashboard/date-ranges"
 import { parseTagRows, scoreTags } from "@/lib/dashboard/neurotag-scorer"
 import { fetchNeurotagData } from "@/lib/dashboard/queries/neurotag"
+import { fetchAdFunnelData, type AdFunnelData } from "@/lib/dashboard/queries/ad-funnel"
 
 export const revalidate = 300
 
@@ -18,9 +19,13 @@ export default async function NeuroTagPage({
   const brandText  = brandLabel(brand)
 
   let data
+  let adFunnel: AdFunnelData | null = null
   let error: string | null = null
   try {
-    data = await fetchNeurotagData(range, brand)
+    ;[data, adFunnel] = await Promise.all([
+      fetchNeurotagData(range, brand),
+      fetchAdFunnelData(range, brand),
+    ])
   } catch (e) {
     error = String(e)
     data  = null
@@ -39,7 +44,7 @@ export default async function NeuroTagPage({
             Creative IQ — Neuro Tag Analysis
           </h1>
           <p className="text-sm text-stone-500 dark:text-night-500 mt-1">
-            Tag-level signal scoring · {brandText} · {rangeLabel} · split-credit spend by default
+            Ad funnel · per-stage winners & neuro-tag attribution · {brandText} · {rangeLabel}
           </p>
           {error && (
             <p className="mt-2 text-sm text-amber-400">
@@ -101,6 +106,9 @@ export default async function NeuroTagPage({
         spendTrend={data?.spendTrend ?? []}
         adLeaderboard={data?.adLeaderboard ?? []}
         adTagMap={data?.adTagMap ?? []}
+        funnelAdRows={adFunnel?.adRows ?? []}
+        funnelTotals={adFunnel?.funnelTotals ?? []}
+        funnelTagMap={adFunnel?.adTagMap ?? []}
         start={range.start}
         end={range.end}
         brand={brand.id}
