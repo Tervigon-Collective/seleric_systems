@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { SimInputPanel } from "@/components/cogs/SimInputPanel"
 import { UnitEconomicsGrid } from "@/components/cogs/UnitEconomicsGrid"
@@ -75,7 +75,7 @@ function brandIdFromSearchParams(searchParams: URLSearchParams): number {
   return parsed
 }
 
-export default function CogsSimulationPage() {
+function CogsSimulationContent() {
   const searchParams = useSearchParams()
   const brandId = brandIdFromSearchParams(searchParams)
   const [activeTab, setActiveTab] = useState<ActiveTab>("portfolio")
@@ -404,5 +404,22 @@ export default function CogsSimulationPage() {
         </>
       )}
     </main>
+  )
+}
+
+export default function CogsSimulationPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-7xl px-4 py-4 sm:px-5 sm:py-6">
+          <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-night-500">
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-stone-300 dark:border-night-700 border-t-insight-positive" />
+            Loading COGS simulation…
+          </div>
+        </main>
+      }
+    >
+      <CogsSimulationContent />
+    </Suspense>
   )
 }
