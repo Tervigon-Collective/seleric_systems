@@ -23,6 +23,8 @@ const TOOL_LABELS: Record<string, string> = {
   runPythonAnalysis: "Python analysis",
   clarify: "Clarifying question",
   exploreSchema: "Schema",
+  getCreativeIQAnalysis: "Creative IQ analysis",
+  getPageContext: "Page context",
 }
 
 function toolLabel(name: string | undefined): string {
@@ -50,6 +52,10 @@ function toolDetail(toolName: string, input: Record<string, unknown>): string {
       return ""
     case "exploreSchema":
       return (input.cubeName as string) ?? "all cubes"
+    case "getCreativeIQAnalysis":
+      return (input.tagCode as string) ?? (input.adId as string) ?? `${input.startDate ?? ""} → ${input.endDate ?? ""}`
+    case "getPageContext":
+      return "on-screen snapshot"
     default:
       return ""
   }

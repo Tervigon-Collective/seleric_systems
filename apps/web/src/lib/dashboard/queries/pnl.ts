@@ -1,91 +1,62 @@
-import "server-only"
-
-import {
-  fullPnlWaterfallSteps,
-  probePnlSchema,
-  TREND_MEASURES,
-  WATERFALL_MEASURES,
-  type PnlSchemaStatus,
-  type WaterfallStep,
-} from "../pnl-breakdown"
-import { type DashboardBrandFilter } from "../brand-filter"
-import { priorDateRange, type DashboardDateRange } from "../date-ranges"
-import { runDashboardCubeFetch, safeCubeQuery } from "../cube-query"
-import { q, td } from "../query-helpers"
-
-export interface PnlDashboardData {
-  schema: PnlSchemaStatus
-  periodRow: Record<string, unknown>
-  priorRow: Record<string, unknown>
-  priorLabel: string
-  dailyTrend: Record<string, unknown>[]
-  waterfallSteps: WaterfallStep[]
-}
-
-function pickMeasures(requested: readonly string[], available: string[]): string[] {
-  const set = new Set(available)
-  return requested.filter((m) => set.has(m))
-}
-
-function mergeMeasureLists(...lists: string[][]): string[] {
-  return [...new Set(lists.flat())]
-}
-
-export async function fetchPnlDashboardData(
-  range: DashboardDateRange,
-  brand: DashboardBrandFilter
-): Promise<PnlDashboardData> {
-  return runDashboardCubeFetch(async () => {
-    const schema = await probePnlSchema()
-    const prior = priorDateRange(range)
-
-    const periodMeasures = mergeMeasureLists(
-      schema.available,
-      pickMeasures(WATERFALL_MEASURES, schema.available),
-      pickMeasures(TREND_MEASURES, schema.available)
-    )
-
-    const [periodRows, priorRows, dailyTrend] = await Promise.all([
-      periodMeasures.length
-        ? safeCubeQuery(
-            q("canonical_pnl", brand, {
-              measures: periodMeasures,
-              timeDimensions: [td("canonical_pnl.report_date", range)],
-            }),
-            "pnlPeriod"
-          )
-        : Promise.resolve([]),
-      periodMeasures.length
-        ? safeCubeQuery(
-            q("canonical_pnl", brand, {
-              measures: periodMeasures,
-              timeDimensions: [{ dimension: "canonical_pnl.report_date", dateRange: prior }],
-            }),
-            "pnlPrior"
-          )
-        : Promise.resolve([]),
-      pickMeasures(TREND_MEASURES, schema.available).length
-        ? safeCubeQuery(
-            q("canonical_pnl", brand, {
-              measures: pickMeasures(TREND_MEASURES, schema.available),
-              timeDimensions: [td("canonical_pnl.report_date", range, "day")],
-              order: { "canonical_pnl.report_date": "asc" },
-            }),
-            "pnlTrend"
-          )
-        : Promise.resolve([]),
-    ])
-
-    const periodRow = periodRows[0] ?? {}
-    const availableSet = new Set(schema.available)
-
-    return {
-      schema,
-      periodRow,
-      priorRow: priorRows[0] ?? {},
-      priorLabel: `${prior[0]} → ${prior[1]}`,
-      dailyTrend,
-      waterfallSteps: fullPnlWaterfallSteps(periodRow, availableSet),
-    }
-  })
-}
+import "server-only"
+
+import {
+  fullPnlWaterfallSteps,
+  PNL_BREAKDOWN_SECTIONS,
+  type PnlSchemaStatus,
+  type WaterfallStep,
+} from "../pnl-breakdown"
+import { type DashboardBrandFilter } from "../brand-filter"
+import { type DashboardDateRange } from "../date-ranges"
+import { fetchPnlDirectClickHouse, PNL_DIRECT_MEASURES } from "./pnl-clickhouse"
+
+export interface PnlDashboardData {
+  schema: PnlSchemaStatus
+  periodRow: Record<string, unknown>
+  priorRow: Record<string, unknown>
+  priorLabel: string
+  dailyTrend: Record<string, unknown>[]
+  waterfallSteps: WaterfallStep[]
+}
+
+/**
+ * The /pnl dashboard now reads `gold.fct_daily_pnl` directly via ClickHouse
+ * HTTP rather than going through the Cube semantic layer. This guarantees
+ * Net sales / Gross profit / Net profit match the canonical bridge defined
+ * in `scripts/reconcile_daily_pnl_audit.py` (the Cube's `net_sales_excl_tax`
+ * column is materialised on a different refund axis and drifts by the size
+ * of cancellation/voided refund timing each month).
+ *
+ * The output rows still use cube-style `canonical_pnl.*` measure keys so the
+ * existing breakdown / waterfall / time-series components consume them
+ * unchanged.
+ */
+export async function fetchPnlDashboardData(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter,
+): Promise<PnlDashboardData> {
+  const fetched = await fetchPnlDirectClickHouse(range, brand)
+
+  const available: string[] = [...new Set<string>([...PNL_DIRECT_MEASURES])]
+  const availableSet = new Set<string>(available)
+  const measureDefs = PNL_BREAKDOWN_SECTIONS.flatMap((s) => s.measures)
+  const missing = measureDefs
+    .map((m) => m.key)
+    .filter((k) => !availableSet.has(k))
+
+  const schema: PnlSchemaStatus = {
+    cubeExists: true,
+    available,
+    missing,
+    measureDefs,
+  }
+
+  return {
+    schema,
+    periodRow: fetched.periodRow,
+    priorRow: fetched.priorRow,
+    priorLabel: fetched.priorLabel,
+    dailyTrend: fetched.dailyTrend,
+    waterfallSteps: fullPnlWaterfallSteps(fetched.periodRow, availableSet),
+  }
+}

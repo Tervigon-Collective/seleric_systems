@@ -2,7 +2,8 @@
 
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, isTextUIPart, isToolUIPart, type UIMessage } from "ai"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
+import type { DomainChatContext } from "@/lib/chat/domain-context"
 import { AssistantMarkdown } from "@/components/chat/AssistantMarkdown"
 import { InsightCanvas } from "@/components/chat/insight/InsightCanvas"
 import { partitionAssistantMessage, type ClarifyPrompt } from "@/lib/chat/partition-message"
@@ -129,10 +130,34 @@ function parseStreamError(err: Error | undefined): { isRateLimit: boolean; messa
   }
 }
 
-export function ChatView() {
-  const { messages, sendMessage, regenerate, setMessages, status, error } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
-  })
+export function ChatView({
+  mode = "full",
+  getContext,
+  suggestedPrompts: propSuggestedPrompts,
+}: {
+  mode?: "full" | "embedded"
+  getContext?: () => DomainChatContext | null
+  suggestedPrompts?: string[]
+}) {
+  const getContextRef = useRef(getContext)
+  useEffect(() => { getContextRef.current = getContext }, [getContext])
+
+  const suggestions = propSuggestedPrompts ?? SUGGESTED
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest: ({ messages, body }) => ({
+          body: { messages, ...(body ?? {}), context: getContextRef.current?.() ?? null },
+        }),
+      }),
+    // stable transport; reads context via ref to always get fresh value
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+
+  const { messages, sendMessage, regenerate, setMessages, status, error } = useChat({ transport })
 
   const [input, setInput] = useState("")
   const isLoading = status === "submitted" || status === "streaming"
@@ -208,19 +233,23 @@ export function ChatView() {
     return text !== prevText
   })
 
+  const heightClass = mode === "embedded" ? "h-full" : "h-[calc(100vh-57px)]"
+
   return (
-    <div className="flex flex-col h-[calc(100vh-57px)] bg-stone-50 dark:bg-night-950">
+    <div className={`flex flex-col ${heightClass} bg-stone-50 dark:bg-night-950`}>
       <div className="flex-1 overflow-y-auto">
         {empty ? (
           <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-stone-900 dark:text-night-50 mb-1 font-sans">BI Assistant</h2>
-              <p className="text-stone-500 dark:text-night-500 text-sm font-sans">
-                Ask anything about your revenue, spend, and P&amp;L
-              </p>
-            </div>
+            {mode === "full" && (
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold text-stone-900 dark:text-night-50 mb-1 font-sans">BI Assistant</h2>
+                <p className="text-stone-500 dark:text-night-500 text-sm font-sans">
+                  Ask anything about your revenue, spend, and P&amp;L
+                </p>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 justify-center max-w-lg">
-              {SUGGESTED.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => handleSuggestion(s)}

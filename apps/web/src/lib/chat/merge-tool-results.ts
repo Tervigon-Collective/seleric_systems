@@ -22,6 +22,8 @@ const DATA_TOOLS = new Set([
   "runComputedQuery",
   "mergeQueryResults",
   "runPythonAnalysis",
+  "getCreativeIQAnalysis",
+  "getPageContext",
 ])
 
 /**
@@ -96,6 +98,14 @@ export function mergeToolOutputs(
       case "mergeQueryResults":
         // Final tools: always win — last one executed takes the canvas.
         seriesRows = rows
+        break
+
+      case "getCreativeIQAnalysis":
+      case "getPageContext":
+        // Domain fetch tools: treated like runQuery — show unless refined tool present.
+        if (!hasRefinedTool) {
+          if (rows.length > seriesRows.length) seriesRows = rows
+        }
         break
 
       case "runComputedQuery":

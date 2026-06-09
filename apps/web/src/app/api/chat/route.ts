@@ -1,6 +1,7 @@
 import { streamText, convertToModelMessages, UIMessage, stepCountIs, generateText } from "ai"
 import { loadSchema } from "@/lib/cube-client"
 import { buildChatSystemPrompt } from "@/lib/chat/system-prompt"
+import { parseDomainChatContext } from "@/lib/chat/domain-context"
 import {
   resolveChatModel,
   resolveFallbackModel,
@@ -278,16 +279,17 @@ async function streamWithTransparentFallback(
 export async function POST(req: Request) {
   const body = await req.json()
   const messages: UIMessage[] = body.messages ?? []
+  const domainCtx = parseDomainChatContext(body.context)
 
-  serverLog("info", "chat POST", { msgCount: messages.length })
+  serverLog("info", "chat POST", { msgCount: messages.length, domain: domainCtx?.domain ?? null })
   const schema = await loadSchema()
   serverLog("info", "schema loaded", { cubes: schema.cubes.map((c) => c.name) })
 
-  const systemPrompt = buildChatSystemPrompt(schema)
+  const systemPrompt = buildChatSystemPrompt(schema, domainCtx)
   serverLog("info", "system prompt", { chars: systemPrompt.length, estimatedTokens: Math.round(systemPrompt.length / 4) })
 
   const convertedMessages = await convertToModelMessages(messages)
-  const tools = createChatTools(schema)
+  const tools = createChatTools(schema, domainCtx)
   const primary = resolveChatModel()
   const fallback = resolveFallbackModel(primary)
   const active = await resolveAvailableModel(primary, fallback)

@@ -102,7 +102,7 @@ export default async function AdsPage({
 
             <p className="mt-2 text-sm text-amber-400">
 
-              Cube unavailable — charts may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
 
             </p>
 

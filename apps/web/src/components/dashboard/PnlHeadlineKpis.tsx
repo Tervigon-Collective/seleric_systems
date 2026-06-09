@@ -129,7 +129,7 @@ function buildBreakdown(
     }
     lines.push(
       { label: "− Discounts", value: fmtCurrency(discounts) },
-      { label: "− Returns", value: fmtCurrency(returns) },
+      { label: "− Returns + Adjustments", value: fmtCurrency(returns) },
       { label: "= Net sales ex GST", value: fmtCurrency(netSalesVal), isTotal: true },
     )
     return lines

@@ -5,6 +5,8 @@ import { dateRangeLabel, parseDashboardDateRange, type DashboardSearchParams } f
 import { parseTagRows, scoreTags } from "@/lib/dashboard/neurotag-scorer"
 import { fetchNeurotagData } from "@/lib/dashboard/queries/neurotag"
 import { fetchAdFunnelData, type AdFunnelData } from "@/lib/dashboard/queries/ad-funnel"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildCreativeIqContext } from "@/lib/chat/domain-context"
 
 export const revalidate = 300
 
@@ -38,6 +40,10 @@ export default async function NeuroTagPage({
 
   return (
     <main className="p-6 space-y-6">
+      <DomainChatRegistrar
+        context={buildCreativeIqContext(scoredTags, adFunnel, range, brand)}
+      />
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">
@@ -48,7 +54,7 @@ export default async function NeuroTagPage({
           </p>
           {error && (
             <p className="mt-2 text-sm text-amber-400">
-              Cube unavailable — data may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — data may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
             </p>
           )}
         </div>

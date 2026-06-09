@@ -5,8 +5,29 @@ import { queryTools, getQueryInstructions } from "./query-tools"
 import { createSchemaTool } from "./schema-tool"
 import { pythonTools, getPythonInstructions } from "./python-tool"
 import { createCreativeIQTools, getCreativeIQInstructions } from "./creative-iq-tools"
+import { createPageContextTool } from "./page-context-tool"
+import type { DomainChatContext } from "../domain-context"
 
-export function createChatTools(schema: SchemaCache) {
+export function createChatTools(schema: SchemaCache, ctx?: DomainChatContext | null) {
+  if (ctx?.domain === "pnl") {
+    return {
+      ...createPageContextTool(ctx),
+      ...createPnlTools(schema),
+      ...createSchemaTool(schema),
+      ...pythonTools,
+    }
+  }
+
+  if (ctx?.domain === "creative-iq") {
+    return {
+      ...createPageContextTool(ctx),
+      ...createCreativeIQTools(ctx.filters.brandId),
+      ...createSchemaTool(schema),
+      ...pythonTools,
+    }
+  }
+
+  // Central chat: all tools, no page context
   return {
     ...createPnlTools(schema),
     ...queryTools,

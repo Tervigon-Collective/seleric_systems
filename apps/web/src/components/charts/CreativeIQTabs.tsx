@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChartCard } from "@/components/charts/ChartCard"
+import { useDomainChat } from "@/components/chat/DomainChatProvider"
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart"
 import { NeuroTagLeaderboard } from "@/components/charts/NeuroTagLeaderboard"
 import { AdPerformanceTable, parseAdLeaderboard } from "@/components/charts/AdPerformanceTable"
@@ -62,6 +63,19 @@ export function CreativeIQTabs({
   // when the same item is chosen twice.
   const [adFocus, setAdFocus]   = useState({ query: "", adId: "", nonce: 0 })
   const [tagFocus, setTagFocus] = useState({ text: "", tagCode: "", nonce: 0 })
+
+  const { updateUiContext } = useDomainChat()
+
+  useEffect(() => {
+    updateUiContext({
+      tab: activeTab,
+      focus: {
+        adId: adFocus.adId || undefined,
+        tagCode: tagFocus.tagCode || undefined,
+        query: adFocus.query || undefined,
+      },
+    })
+  }, [activeTab, adFocus.adId, adFocus.query, tagFocus.tagCode, updateUiContext])
 
   const adRows = parseAdLeaderboard(adLeaderboard, adTagMap)
   const searchIndex = useMemo(() => buildCreativeIndex(scoredTags, adRows), [scoredTags, adRows])

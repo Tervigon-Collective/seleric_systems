@@ -42,7 +42,6 @@ dependencies = [
     # Utilities
     "python-multipart>=0.0.9",
     "PyJWT>=2.8.0",
-    "mcp>=1.0.0",
 ]
 
 [project.optional-dependencies]

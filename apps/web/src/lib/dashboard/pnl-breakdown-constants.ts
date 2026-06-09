@@ -2,6 +2,15 @@ import { measureFormat } from "@/components/charts/format"
 
 export const PNL_CUBE = "canonical_pnl" as const
 
+/**
+ * Indian GST rate applied to taxable revenue lines. Used to derive the
+ * incl-GST column on the P&L breakdown from cube-exposed excl-GST measures
+ * (gross sales, discounts, returns+adjustments, net sales, cancelled audit).
+ * Mirrors the canonical "gross_sales_excl_tax × 1.18" bridge used in
+ * scripts/_run_pnl_audit.py (May 2026 monthly query).
+ */
+export const GST_RATE = 0.18
+
 export type PnlMeasureFormat = "currency" | "count" | "pct" | "ratio"
 
 export interface PnlMeasureDef {
@@ -24,20 +33,30 @@ export const PNL_BREAKDOWN_SECTIONS: PnlBreakdownSection[] = [
   {
     id: "revenue",
     title: "Net sales — Shopify breakdown",
-    subtitle: "Placement axis · gross_sales − discounts − returns = net_sales · cancelled_revenue is audit-only (subset of gross)",
+    subtitle:
+      "Refund-event axis · gross_sales − discounts − returns − adjustments = net_sales · cancellations are audit-only (subset of gross) · Incl-GST = excl × 1.18 for taxable lines, actual notes_*_incl_gst for refund lines",
     measures: [
       { key: "canonical_pnl.gross_sales_excl_tax", label: "Gross sales ex GST" },
-      { key: "canonical_pnl.cancelled_revenue", label: "Cancelled revenue", audit: true },
+      {
+        key: "canonical_pnl.cancelled_revenue",
+        label: "Cancelled revenue (audit)",
+        description: "notes_cancellation_refund_excl_gst · refund-event axis · subset of gross, not subtracted from net sales",
+        audit: true,
+      },
       { key: "canonical_pnl.total_discounts_excl_tax", label: "Discounts ex GST", deduction: true },
-      { key: "canonical_pnl.returns_excl_tax", label: "Returns ex GST", deduction: true },
+      {
+        key: "canonical_pnl.notes_return_refund_excl_gst",
+        label: "Returns ex GST",
+        description: "notes_return_refund_excl_gst · pnl_refund_class = RETURN",
+        deduction: true,
+      },
+      {
+        key: "canonical_pnl.notes_adjustment_refund_excl_gst",
+        label: "Adjustments ex GST",
+        description: "notes_adjustment_refund_excl_gst · pnl_refund_class = ADJUSTMENT",
+        deduction: true,
+      },
       { key: "canonical_pnl.net_sales_excl_tax", label: "Net sales ex GST" },
-      { key: "canonical_pnl.net_revenue_excl_tax", label: "Net sales ex GST" },
-      { key: "canonical_pnl.gross_revenue", label: "Gross revenue (incl. GST)" },
-      { key: "canonical_pnl.total_refund_amount", label: "Refund amount (events)", deduction: true },
-      { key: "canonical_pnl.net_revenue", label: "Net sales (cash)" },
-      { key: "canonical_pnl.total_tax_collected", label: "Tax collected" },
-      { key: "canonical_pnl.shipping_charged_to_customers", label: "Shipping charged" },
-      { key: "canonical_pnl.total_sales_incl_tax", label: "Total sales incl. tax" },
     ],
   },
   {
@@ -67,41 +86,20 @@ export const PNL_BREAKDOWN_SECTIONS: PnlBreakdownSection[] = [
     title: "Profit & efficiency",
     measures: [
       { key: "canonical_pnl.gross_profit", label: "Gross profit" },
-      { key: "canonical_pnl.contribution_margin", label: "Contribution margin" },
       { key: "canonical_pnl.net_profit", label: "Net profit" },
       { key: "canonical_pnl.gross_margin_pct", label: "Gross margin %", format: "pct" },
-      { key: "canonical_pnl.contribution_margin_pct", label: "Contribution margin %", format: "pct" },
       { key: "canonical_pnl.net_margin_pct", label: "Net margin %", format: "pct" },
       { key: "canonical_pnl.mer", label: "MER", format: "ratio" },
-      { key: "canonical_pnl.blended_roas", label: "Blended ROAS", format: "ratio" },
     ],
   },
   {
     id: "orders",
     title: "Order volumes",
-    subtitle: "Placement vs status-change axes",
     measures: [
       { key: "canonical_pnl.orders_created", label: "Orders created", format: "count" },
       { key: "canonical_pnl.total_orders", label: "Total orders (active + cancelled)", format: "count" },
       { key: "canonical_pnl.active_orders", label: "Active orders", format: "count" },
       { key: "canonical_pnl.cancelled_orders", label: "Cancelled orders", format: "count" },
-      { key: "canonical_pnl.refunded_orders", label: "Refunded orders (status axis)", format: "count" },
-      { key: "canonical_pnl.voided_orders", label: "Voided orders (status axis)", format: "count" },
-      { key: "canonical_pnl.revenue_adjustment_orders", label: "RTO revenue adjustments", format: "count", audit: true },
-    ],
-  },
-  {
-    id: "audit",
-    title: "Audit & data quality",
-    subtitle: "Excluded from net P&L — reconciliation only",
-    measures: [
-      { key: "canonical_pnl.voided_revenue", label: "Voided revenue", audit: true },
-      { key: "canonical_pnl.rto_gross_revenue", label: "RTO gross revenue", audit: true },
-      { key: "canonical_pnl.rto_adj_product_cost", label: "RTO adj. product cost", audit: true },
-      { key: "canonical_pnl.rto_adj_shipping_cost", label: "RTO adj. shipping", audit: true },
-      { key: "canonical_pnl.rto_adj_packaging_cost", label: "RTO adj. packaging", audit: true },
-      { key: "canonical_pnl.rto_adj_payment_gateway_fees", label: "RTO adj. gateway fees", audit: true },
-      { key: "canonical_pnl.product_cost_coverage_pct", label: "COGS coverage %", format: "pct" },
     ],
   },
 ]
@@ -111,7 +109,8 @@ export const ALL_PNL_MEASURES = PNL_BREAKDOWN_SECTIONS.flatMap((s) => s.measures
 export const WATERFALL_MEASURES = [
   "canonical_pnl.gross_sales_excl_tax",
   "canonical_pnl.total_discounts_excl_tax",
-  "canonical_pnl.returns_excl_tax",
+  "canonical_pnl.notes_return_refund_excl_gst",
+  "canonical_pnl.notes_adjustment_refund_excl_gst",
   "canonical_pnl.net_sales_excl_tax",
   "canonical_pnl.product_cost",
   "canonical_pnl.gross_profit",
@@ -127,9 +126,9 @@ export const TREND_MEASURES = [
   "canonical_pnl.gross_sales_excl_tax",
   "canonical_pnl.cancelled_revenue",
   "canonical_pnl.total_discounts_excl_tax",
-  "canonical_pnl.returns_excl_tax",
+  "canonical_pnl.notes_return_refund_excl_gst",
+  "canonical_pnl.notes_adjustment_refund_excl_gst",
   "canonical_pnl.net_sales_excl_tax",
-  "canonical_pnl.net_revenue_excl_tax",
   "canonical_pnl.product_cost",
   "canonical_pnl.gross_profit",
   "canonical_pnl.meta_spend",
@@ -139,7 +138,6 @@ export const TREND_MEASURES = [
   "canonical_pnl.packaging_cost",
   "canonical_pnl.payment_gateway_fees",
   "canonical_pnl.rto_cost",
-  "canonical_pnl.total_operating_cost",
   "canonical_pnl.net_profit",
 ] as const
 
@@ -173,7 +171,20 @@ export const TIME_SERIES_TABLE_ROWS: TimeSeriesRowDef[] = [
     indent: 1,
     optional: true,
   },
-  { key: "canonical_pnl.returns_excl_tax", label: "− Returns ex GST", kind: "cost", indent: 1, optional: true },
+  {
+    key: "canonical_pnl.notes_return_refund_excl_gst",
+    label: "− Returns ex GST",
+    kind: "cost",
+    indent: 1,
+    optional: true,
+  },
+  {
+    key: "canonical_pnl.notes_adjustment_refund_excl_gst",
+    label: "− Adjustments ex GST",
+    kind: "cost",
+    indent: 1,
+    optional: true,
+  },
   {
     key: "canonical_pnl.net_sales_excl_tax",
     label: "= Net sales ex GST",
@@ -305,7 +316,8 @@ export function fullPnlWaterfallSteps(
 
   const grossSales = num("canonical_pnl.gross_sales_excl_tax")
   const discounts = num("canonical_pnl.total_discounts_excl_tax")
-  const returns = num("canonical_pnl.returns_excl_tax")
+  const returnsOnly = num("canonical_pnl.notes_return_refund_excl_gst")
+  const adjustmentsOnly = num("canonical_pnl.notes_adjustment_refund_excl_gst")
   const netSales = num("canonical_pnl.net_sales_excl_tax")
   const productCost = num("canonical_pnl.product_cost")
   const grossProfit = num("canonical_pnl.gross_profit")
@@ -320,7 +332,9 @@ export function fullPnlWaterfallSteps(
 
   const hasRevenueBridge =
     available.has("canonical_pnl.gross_sales_excl_tax") &&
-    (available.has("canonical_pnl.total_discounts_excl_tax") || available.has("canonical_pnl.returns_excl_tax"))
+    (available.has("canonical_pnl.total_discounts_excl_tax") ||
+      available.has("canonical_pnl.notes_return_refund_excl_gst") ||
+      available.has("canonical_pnl.notes_adjustment_refund_excl_gst"))
 
   if (hasRevenueBridge) {
     steps.push({
@@ -341,14 +355,24 @@ export function fullPnlWaterfallSteps(
         unavailable: discounts.unavailable,
       })
     }
-    if (available.has("canonical_pnl.returns_excl_tax")) {
+    if (available.has("canonical_pnl.notes_return_refund_excl_gst")) {
       steps.push({
         name: "Returns",
-        value: -Math.abs(returns.value),
+        value: -Math.abs(returnsOnly.value),
         kind: "delta",
         segment: "revenue",
-        measureKey: "canonical_pnl.returns_excl_tax",
-        unavailable: returns.unavailable,
+        measureKey: "canonical_pnl.notes_return_refund_excl_gst",
+        unavailable: returnsOnly.unavailable,
+      })
+    }
+    if (available.has("canonical_pnl.notes_adjustment_refund_excl_gst")) {
+      steps.push({
+        name: "Adjustments",
+        value: -Math.abs(adjustmentsOnly.value),
+        kind: "delta",
+        segment: "revenue",
+        measureKey: "canonical_pnl.notes_adjustment_refund_excl_gst",
+        unavailable: adjustmentsOnly.unavailable,
       })
     }
     steps.push({
@@ -421,4 +445,91 @@ export function fullPnlWaterfallSteps(
   })
 
   return steps
+}
+
+/**
+ * Excl-GST taxable revenue lines. Incl-GST value = excl × (1 + GST_RATE).
+ * Mirrors the canonical monthly P&L bridge:
+ *   gross_sales × 1.18 − discounts × 1.18 − returns × 1.18 − adjustments × 1.18
+ *     = net_sales × 1.18
+ *
+ * Notes refund columns (notes_*_refund_excl_gst) also fall here because their
+ * incl-GST counterpart equals excl × 1.18 (verified against actual
+ * notes_*_refund_incl_gst columns in scripts/reconcile_daily_pnl_audit.py).
+ */
+const TAXABLE_REVENUE_MEASURES = new Set<string>([
+  "canonical_pnl.gross_sales_excl_tax",
+  "canonical_pnl.total_discounts_excl_tax",
+  "canonical_pnl.returns_excl_tax",
+  "canonical_pnl.notes_return_refund_excl_gst",
+  "canonical_pnl.notes_adjustment_refund_excl_gst",
+  "canonical_pnl.cancelled_revenue",
+  "canonical_pnl.net_sales_excl_tax",
+  "canonical_pnl.net_revenue_excl_tax",
+])
+
+/**
+ * Costs and ad spend: no GST is charged to customers / no GST credit is
+ * recoverable, so the incl-GST column shows the same value as the excl-GST
+ * column. Matches the canonical monthly P&L bridge where product COGS /
+ * shipping / packaging / gateway / RTO / ad spend are identical in both
+ * columns.
+ */
+const COST_AND_SPEND_MEASURES = new Set<string>([
+  "canonical_pnl.product_cost",
+  "canonical_pnl.shipping_cost",
+  "canonical_pnl.packaging_cost",
+  "canonical_pnl.payment_gateway_fees",
+  "canonical_pnl.rto_cost",
+  "canonical_pnl.total_operating_cost",
+  "canonical_pnl.meta_spend",
+  "canonical_pnl.google_spend",
+  "canonical_pnl.total_ad_spend",
+])
+
+/**
+ * Profit / margin measures whose incl-GST value differs from excl by exactly
+ * net_sales_excl × GST_RATE (because COGS / ad / ops are unchanged, but
+ * net_sales gets the 1.18 multiplier).
+ */
+const PROFIT_DELTA_MEASURES = new Set<string>([
+  "canonical_pnl.gross_profit",
+  "canonical_pnl.net_profit",
+])
+
+function rowNetSalesExcl(row: Record<string, unknown>): number | null {
+  return (
+    rowValue(row, "canonical_pnl.net_sales_excl_tax") ??
+    rowValue(row, "canonical_pnl.net_revenue_excl_tax")
+  )
+}
+
+/**
+ * Incl-GST value for a P&L measure on a row. Returns `null` if the measure
+ * has no meaningful incl-GST counterpart (percentages, ratios, counts) or if
+ * the underlying excl value is missing.
+ *
+ * Tax bridge used (same as scripts/reconcile_daily_pnl_audit.py May query):
+ *   - Taxable revenue lines: excl × 1.18
+ *   - Costs / ad spend: same as excl (no GST)
+ *   - Derived profit (gross_profit / net_profit):
+ *       excl + net_sales_excl × 0.18
+ *   - Everything else (%, ratio, count): null
+ */
+export function inclGstValue(
+  row: Record<string, unknown>,
+  measureKey: string,
+): number | null {
+  if (TAXABLE_REVENUE_MEASURES.has(measureKey)) {
+    const v = rowValue(row, measureKey)
+    return v == null ? null : v * (1 + GST_RATE)
+  }
+  if (COST_AND_SPEND_MEASURES.has(measureKey)) return rowValue(row, measureKey)
+  if (PROFIT_DELTA_MEASURES.has(measureKey)) {
+    const v = rowValue(row, measureKey)
+    if (v == null) return null
+    const ns = rowNetSalesExcl(row)
+    return ns == null ? v : v + ns * GST_RATE
+  }
+  return null
 }

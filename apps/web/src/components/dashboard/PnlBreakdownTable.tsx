@@ -2,6 +2,7 @@
 
 import { formatMeasureValue } from "@/components/charts/format"
 import {
+  inclGstValue,
   PNL_BREAKDOWN_SECTIONS,
   rowValue,
   measureDefFormat,
@@ -74,7 +75,8 @@ export function PnlBreakdownTable({ row, priorRow, priorLabel, schema }: Props) 
                 <thead>
                   <tr className="bg-stone-50 dark:bg-night-850 text-left text-[10px] uppercase tracking-wide text-stone-500 dark:text-night-500">
                     <th className="px-3 py-2 font-medium">Line item</th>
-                    <th className="px-3 py-2 font-medium text-right">Period</th>
+                    <th className="px-3 py-2 font-medium text-right">Excl-GST</th>
+                    <th className="px-3 py-2 font-medium text-right">Incl-GST</th>
                     <th className="px-3 py-2 font-medium text-right">% of net sales</th>
                     <th className="px-3 py-2 font-medium text-right">Prior ({priorLabel})</th>
                     <th className="px-3 py-2 font-medium text-right">Δ</th>
@@ -89,6 +91,9 @@ export function PnlBreakdownTable({ row, priorRow, priorLabel, schema }: Props) 
                     const isDeduction = def.deduction
                     const displayCurr =
                       curr != null && isDeduction && fmt === "currency" ? -Math.abs(curr) : curr
+                    const inclRaw = fmt === "currency" ? inclGstValue(row, def.key) : null
+                    const displayIncl =
+                      inclRaw != null && isDeduction ? -Math.abs(inclRaw) : inclRaw
 
                     return (
                       <tr
@@ -109,9 +114,17 @@ export function PnlBreakdownTable({ row, priorRow, priorLabel, schema }: Props) 
                               no data
                             </span>
                           )}
+                          {def.description && (
+                            <p className="mt-0.5 text-[10px] text-stone-400 dark:text-night-600 leading-snug">
+                              {def.description}
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium text-stone-900 dark:text-night-50">
                           {displayCurr != null ? formatMeasureValue(displayCurr, def.key) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-stone-700 dark:text-night-200 text-xs">
+                          {displayIncl != null ? formatMeasureValue(displayIncl, def.key) : "—"}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-stone-500 dark:text-night-500 text-xs">
                           {fmt === "currency" ? pctOfNetSales(curr, netSales) : "—"}
@@ -133,7 +146,7 @@ export function PnlBreakdownTable({ row, priorRow, priorLabel, schema }: Props) 
                   })}
                   {sectionMissing.map((def) => (
                     <tr key={def.key} className="bg-amber-50/50 dark:bg-amber-950/10">
-                      <td className="px-3 py-2 text-stone-500 dark:text-night-500" colSpan={5}>
+                      <td className="px-3 py-2 text-stone-500 dark:text-night-500" colSpan={6}>
                         <span>{def.label}</span>
                         <span className="ml-2 rounded bg-amber-200/80 dark:bg-amber-900/40 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200">
                           not in cube

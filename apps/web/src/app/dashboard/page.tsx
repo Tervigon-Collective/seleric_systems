@@ -74,7 +74,7 @@ export default async function DashboardPage({
       (data?.netProfitTrend?.length ?? 0) > 0
 
     if (cubeErr && !hasAnyData) {
-      error = `Cube MCP unreachable (${cubeErr}). Check network or set CUBE_MCP_URL to your local MCP.`
+      error = `Cube unreachable (${cubeErr}). Check network or set CUBE_API_URL.`
     }
 
   } catch (e) {
@@ -116,7 +116,7 @@ export default async function DashboardPage({
 
             <p className="mt-2 text-sm text-amber-400">
 
-              Cube unavailable — charts may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
 
             </p>
 

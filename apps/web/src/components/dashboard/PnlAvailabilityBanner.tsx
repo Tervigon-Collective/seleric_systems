@@ -10,7 +10,7 @@ export function PnlAvailabilityBanner({ schema }: Props) {
       <div className="rounded-xl border border-red-300/60 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm text-red-800 dark:text-red-200">
         <p className="font-medium">canonical_pnl cube not found in schema</p>
         <p className="mt-1 text-xs opacity-90">
-          The audited P&L view is unavailable. Check Cube deployment or CUBE_MCP_URL.
+          The audited P&L view is unavailable. Check Cube deployment or CUBE_API_URL.
         </p>
       </div>
     )
