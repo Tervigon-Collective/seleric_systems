@@ -4,7 +4,15 @@ import { usePathname } from "next/navigation"
 import { useDomainChat } from "./DomainChatProvider"
 import { ChatView } from "./ChatView"
 
-const DOMAIN_ROUTES = ["/pnl", "/ads/neurotag"]
+const DOMAIN_ROUTES = ["/pnl", "/ads/neurotag", "/dashboard", "/ads", "/shopify"]
+
+const DOMAIN_LABELS: Record<string, string> = {
+  "pnl": "P&L Assistant",
+  "creative-iq": "Creative IQ Assistant",
+  "dashboard": "Dashboard Assistant",
+  "meta-ads": "Meta Ads Assistant",
+  "shopify": "Shopify Assistant",
+}
 
 export function DomainChatDrawer() {
   const pathname = usePathname()
@@ -53,7 +61,7 @@ export function DomainChatDrawer() {
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-night-800 px-4 py-3 shrink-0">
               <div>
                 <h2 className="text-sm font-semibold text-stone-900 dark:text-night-50 font-sans">
-                  {context.domain === "pnl" ? "P&L Assistant" : "Creative IQ Assistant"}
+                  {DOMAIN_LABELS[context.domain] ?? "AI Assistant"}
                 </h2>
                 <p className="text-xs text-stone-500 dark:text-night-500 font-sans">
                   {context.filters.start} → {context.filters.end}

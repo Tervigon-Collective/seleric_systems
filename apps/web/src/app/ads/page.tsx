@@ -22,6 +22,8 @@ import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-fil
 import { funnelFromAggregate } from "@/lib/dashboard/page-helpers"
 
 import { fetchAdsDashboardData } from "@/lib/dashboard/queries/ads"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildMetaAdsContext } from "@/lib/chat/domain-context"
 
 import {
 
@@ -85,6 +87,12 @@ export default async function AdsPage({
   return (
 
     <main className="p-6 space-y-6">
+
+      {data && (
+        <DomainChatRegistrar
+          context={buildMetaAdsContext(data, range, brand)}
+        />
+      )}
 
       <header className="flex flex-wrap items-start justify-between gap-4">
 

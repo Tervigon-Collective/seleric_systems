@@ -79,15 +79,14 @@ export function detectChartPlan(rows: CubeRow[], hintType?: string): ChartPlan[]
   if (hintType && FORCEABLE_KINDS.has(hintType)) {
     const xKey = profile.dateKey ?? profile.categoryKey ?? Object.keys(rows[0])[0] ?? "x"
     const metrics = profile.metricKeys.length ? profile.metricKeys : Object.keys(rows[0]).filter((k) => k !== xKey)
-    return [
-      {
-        kind: hintType as ChartPlan["kind"],
-        title: prettyLabel(metrics[0] ?? "value"),
-        xKey,
-        series: seriesFromKeys(metrics.slice(0, 5), profile),
-      },
-      { kind: "table", title: "Full data", xKey, series: [] },
-    ]
+    const chartPlan: ChartPlan = {
+      kind: hintType as ChartPlan["kind"],
+      title: prettyLabel(metrics[0] ?? "value"),
+      xKey,
+      series: seriesFromKeys(metrics.slice(0, 5), profile),
+    }
+    if (hintType === "table") return [chartPlan]
+    return [chartPlan, { kind: "table", title: "Full data", xKey, series: [] }]
   }
 
   // 0b. Ranked list hint — pair_count / top_n outputs always render as horizontal bar

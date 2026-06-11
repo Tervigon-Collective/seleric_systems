@@ -26,6 +26,8 @@ import { cogsBreakdownFromRow } from "@/lib/dashboard/cogs-breakdown"
 
 import { fetchMainDashboardData } from "@/lib/dashboard/queries/main"
 import { getLastCubeError } from "@/lib/dashboard/cube-query"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildDashboardContext } from "@/lib/chat/domain-context"
 
 import {
 
@@ -99,6 +101,12 @@ export default async function DashboardPage({
   return (
 
     <main className="p-6 space-y-6">
+
+      {data && (
+        <DomainChatRegistrar
+          context={buildDashboardContext(data, range, brand)}
+        />
+      )}
 
       <header className="flex flex-wrap items-start justify-between gap-4">
 

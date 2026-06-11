@@ -44,6 +44,7 @@ export const PNL_DIRECT_MEASURES = [
   "canonical_pnl.notes_adjustment_refund_excl_gst",
   "canonical_pnl.returns_excl_tax", // = notes_return + notes_adjustment (combined)
   "canonical_pnl.cancelled_revenue", // refund-event axis (notes_cancellation_refund_excl_gst)
+  "canonical_pnl.tax_collected", // GST on net sales (audit) = net_sales_incl_gst − net_sales_excl_gst
   "canonical_pnl.net_sales_excl_tax",
   "canonical_pnl.net_revenue_excl_tax",
   // Costs / ad spend
@@ -172,7 +173,9 @@ function buildCubeRow(raw: Partial<RawDailyRow>): Record<string, unknown> {
   const grossSales = num(raw.gross_sales)
   const discounts = num(raw.discounts)
   const returnsExcl = num(raw.returns_excl)
+  const returnsIncl = num(raw.returns_incl)
   const adjustmentsExcl = num(raw.adjustments_excl)
+  const adjustmentsIncl = num(raw.adjustments_incl)
   const cancellationsExcl = num(raw.cancellations_excl)
 
   const productCost = num(raw.product_cost)
@@ -186,6 +189,13 @@ function buildCubeRow(raw: Partial<RawDailyRow>): Record<string, unknown> {
 
   const returnsCombinedExcl = returnsExcl + adjustmentsExcl
   const netSalesExcl = grossSales - discounts - returnsCombinedExcl
+  // Canonical incl-GST bridge (matches scripts/reconcile_daily_pnl_audit.py):
+  //   gross_sales × 1.18 − discounts × 1.18 − returns_incl − adjustments_incl
+  // Tax collected on net sales = incl − excl. Audit-only — not subtracted from
+  // any P&L subtotal; mirrors the cancelled_revenue (audit) treatment.
+  const netSalesIncl =
+    grossSales * (1 + TAX_RATE) - discounts * (1 + TAX_RATE) - returnsIncl - adjustmentsIncl
+  const taxCollected = netSalesIncl - netSalesExcl
   const grossProfit = netSalesExcl - productCost
   const netProfit =
     grossProfit - totalAdSpend - shippingCost - packagingCost - gatewayFees - rtoCost
@@ -202,6 +212,7 @@ function buildCubeRow(raw: Partial<RawDailyRow>): Record<string, unknown> {
     "canonical_pnl.notes_adjustment_refund_excl_gst": adjustmentsExcl,
     "canonical_pnl.returns_excl_tax": returnsCombinedExcl,
     "canonical_pnl.cancelled_revenue": cancellationsExcl,
+    "canonical_pnl.tax_collected": taxCollected,
     "canonical_pnl.net_sales_excl_tax": netSalesExcl,
     "canonical_pnl.net_revenue_excl_tax": netSalesExcl,
     "canonical_pnl.product_cost": productCost,

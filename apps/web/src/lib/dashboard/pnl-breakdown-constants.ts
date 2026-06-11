@@ -57,6 +57,12 @@ export const PNL_BREAKDOWN_SECTIONS: PnlBreakdownSection[] = [
         deduction: true,
       },
       { key: "canonical_pnl.net_sales_excl_tax", label: "Net sales ex GST" },
+      {
+        key: "canonical_pnl.tax_collected",
+        label: "GST collected (audit)",
+        description: "net_sales_incl_gst − net_sales_excl_gst · canonical bridge: gross × 1.18 − discounts × 1.18 − returns_incl − adjustments_incl · audit-only, not subtracted from any subtotal",
+        audit: true,
+      },
     ],
   },
   {
@@ -129,6 +135,7 @@ export const TREND_MEASURES = [
   "canonical_pnl.notes_return_refund_excl_gst",
   "canonical_pnl.notes_adjustment_refund_excl_gst",
   "canonical_pnl.net_sales_excl_tax",
+  "canonical_pnl.tax_collected",
   "canonical_pnl.product_cost",
   "canonical_pnl.gross_profit",
   "canonical_pnl.meta_spend",
@@ -190,6 +197,13 @@ export const TIME_SERIES_TABLE_ROWS: TimeSeriesRowDef[] = [
     label: "= Net sales ex GST",
     kind: "subtotal",
     altKeys: ["canonical_pnl.net_revenue_excl_tax"],
+  },
+  {
+    key: "canonical_pnl.tax_collected",
+    label: "GST collected (audit)",
+    kind: "revenue",
+    indent: 1,
+    optional: true,
   },
   { key: "canonical_pnl.product_cost", label: "− Product COGS", kind: "cost", indent: 1, optional: true },
   { key: "canonical_pnl.gross_profit", label: "= Gross profit", kind: "subtotal" },
@@ -485,6 +499,8 @@ const COST_AND_SPEND_MEASURES = new Set<string>([
   "canonical_pnl.meta_spend",
   "canonical_pnl.google_spend",
   "canonical_pnl.total_ad_spend",
+  // tax_collected is itself the GST amount — incl == excl (already "the tax")
+  "canonical_pnl.tax_collected",
 ])
 
 /**

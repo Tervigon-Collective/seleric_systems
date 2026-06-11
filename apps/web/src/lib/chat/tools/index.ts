@@ -27,6 +27,34 @@ export function createChatTools(schema: SchemaCache, ctx?: DomainChatContext | n
     }
   }
 
+  if (ctx?.domain === "dashboard") {
+    return {
+      ...createPageContextTool(ctx),
+      ...createPnlTools(schema),
+      ...queryTools,
+      ...createSchemaTool(schema),
+      ...pythonTools,
+    }
+  }
+
+  if (ctx?.domain === "meta-ads") {
+    return {
+      ...createPageContextTool(ctx),
+      ...queryTools,
+      ...createSchemaTool(schema),
+      ...pythonTools,
+    }
+  }
+
+  if (ctx?.domain === "shopify") {
+    return {
+      ...createPageContextTool(ctx),
+      ...queryTools,
+      ...createSchemaTool(schema),
+      ...pythonTools,
+    }
+  }
+
   // Central chat: all tools, no page context
   return {
     ...createPnlTools(schema),

@@ -14,7 +14,7 @@ type AdFunnelDataInput = {
 } | null
 
 export const domainChatContextSchema = z.object({
-  domain: z.enum(["pnl", "creative-iq"]),
+  domain: z.enum(["pnl", "creative-iq", "dashboard", "meta-ads", "shopify"]),
   tab: z.string().optional(),
   filters: z.object({
     start: z.string(),
@@ -83,6 +83,109 @@ export function buildPnlContext(
       "Which cost line hurt us most in the waterfall?",
       "Compare this period to prior period MER",
       "Show me the daily revenue trend",
+    ],
+  }
+}
+
+type DashboardDataInput = {
+  kpiPeriodCompare: {
+    current: Record<string, unknown>
+    prior: Record<string, unknown>
+    priorLabel: string
+  }
+  channelRevenue: Record<string, unknown>[]
+  netProfitTrend: Record<string, unknown>[]
+}
+
+export function buildDashboardContext(
+  data: DashboardDataInput,
+  range: { start: string; end: string },
+  brand: { id: number }
+): DomainChatContext {
+  const summary: Record<string, unknown> = {
+    current: data.kpiPeriodCompare.current,
+    prior: data.kpiPeriodCompare.prior,
+    priorLabel: data.kpiPeriodCompare.priorLabel,
+    channelRevenue: data.channelRevenue[0] ?? {},
+  }
+
+  return {
+    domain: "dashboard",
+    filters: { start: range.start, end: range.end, brandId: brand.id },
+    summary,
+    snapshot: {
+      rows: data.netProfitTrend.slice(0, 31),
+      label: "Daily net profit trend",
+    },
+    suggestedPrompts: [
+      "What's driving the change in net profit?",
+      "Compare Meta vs Google ROAS this period",
+      "Which channel has the best return?",
+      "Show me the gross margin trend",
+    ],
+  }
+}
+
+type MetaAdsDataInput = {
+  cpcCpmCpaCurrent: Record<string, unknown>[]
+  cpcCpmCpaPrior: Record<string, unknown>[]
+  purchaseFunnel: Record<string, unknown>[]
+  topCampaignsRoas: Record<string, unknown>[]
+}
+
+export function buildMetaAdsContext(
+  data: MetaAdsDataInput,
+  range: { start: string; end: string },
+  brand: { id: number }
+): DomainChatContext {
+  const summary: Record<string, unknown> = {
+    current: data.cpcCpmCpaCurrent[0] ?? {},
+    prior: data.cpcCpmCpaPrior[0] ?? {},
+    funnelTotals: data.purchaseFunnel[0] ?? {},
+  }
+
+  return {
+    domain: "meta-ads",
+    filters: { start: range.start, end: range.end, brandId: brand.id },
+    summary,
+    snapshot: {
+      rows: data.topCampaignsRoas.slice(0, 10),
+      label: "Top campaigns by ROAS",
+    },
+    suggestedPrompts: [
+      "Which campaign has the best ROAS?",
+      "Show me the purchase funnel drop-off",
+      "Compare CPA this period vs last period",
+      "Which adsets should we scale?",
+    ],
+  }
+}
+
+type ShopifyDataInput = {
+  topProducts: Record<string, unknown>[]
+  revenueOrdersDaily: Record<string, unknown>[]
+}
+
+export function buildShopifyContext(
+  data: ShopifyDataInput,
+  range: { start: string; end: string },
+  brand: { id: number }
+): DomainChatContext {
+  return {
+    domain: "shopify",
+    filters: { start: range.start, end: range.end, brandId: brand.id },
+    summary: {
+      topProductCount: data.topProducts.length,
+    },
+    snapshot: {
+      rows: data.topProducts.slice(0, 10),
+      label: "Top products by net sales",
+    },
+    suggestedPrompts: [
+      "Which products have the best gross margin?",
+      "What's the return rate trend?",
+      "Show me top UTM sources by revenue",
+      "Which products should we promote?",
     ],
   }
 }
