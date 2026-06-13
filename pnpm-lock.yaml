@@ -44,9 +44,6 @@ importers:
       '@multiagent/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@prisma/client':
-        specifier: ^5.18.0
-        version: 5.22.0(prisma@5.22.0)
       ai:
         specifier: ^6.0.191
         version: 6.0.191(zod@3.25.76)
