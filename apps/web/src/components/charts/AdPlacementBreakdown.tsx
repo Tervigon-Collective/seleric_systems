@@ -115,6 +115,15 @@ export function AdPlacementBreakdown({ adId, start, end, brand }: Props) {
 
   const totalSpend = rows.reduce((s, r) => s + r.spend, 0)
 
+  // Best format: placement with lowest CPA (where purchases > 0), else highest CTR
+  const avgCpa = totalSpend > 0 && rows.reduce((s, r) => s + r.purchases, 0) > 0
+    ? totalSpend / rows.reduce((s, r) => s + r.purchases, 0)
+    : 0
+  const rowsWithPurchases = rows.filter((r) => r.purchases > 0 && r.cpa > 0)
+  const bestFormat = rowsWithPurchases.length > 0
+    ? rowsWithPurchases.reduce((best, r) => r.cpa < best.cpa ? r : best)
+    : rows.reduce((best, r) => r.ctr > best.ctr ? r : best)
+
   // Platform rollup (sum placements by publisher_platform).
   const byPlatform = new Map<string, number>()
   for (const r of rows) byPlatform.set(r.platform, (byPlatform.get(r.platform) ?? 0) + r.spend)
@@ -122,6 +131,23 @@ export function AdPlacementBreakdown({ adId, start, end, brand }: Props) {
 
   return (
     <div className="space-y-2">
+      {/* Best format badge */}
+      <div className="flex items-center gap-2 text-[11px]">
+        <span className="text-stone-400 dark:text-night-600">Best format:</span>
+        <span className="font-medium text-emerald-500">
+          {humanize(bestFormat.platform)} {humanize(bestFormat.position)}
+        </span>
+        {rowsWithPurchases.length > 0 && avgCpa > 0 ? (
+          <span className="text-stone-400 dark:text-night-600 tabular-nums">
+            {fmtCurrency(bestFormat.cpa)} CPA vs {fmtCurrency(avgCpa)} avg
+          </span>
+        ) : (
+          <span className="text-stone-400 dark:text-night-600 tabular-nums">
+            {fmtPct(bestFormat.ctr * 100)} CTR
+          </span>
+        )}
+      </div>
+
       {/* Platform rollup chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         {platformRollup.map(([platform, spend]) => (

@@ -10,7 +10,7 @@ dotenvConfig({ path: path.join(root, ".env"), override: false })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@multiagent/shared-types", "@multiagent/db"],
+  transpilePackages: ["@multiagent/shared-types"],
   experimental: {
     outputFileTracingRoot: path.join(__dirname, "../.."),
   },

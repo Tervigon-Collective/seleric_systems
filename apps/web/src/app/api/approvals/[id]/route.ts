@@ -1,95 +1,7 @@
-import { createHmac, timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
-import { prisma } from "@multiagent/db"
-import { Queue } from "bullmq"
-import Redis from "ioredis"
+import { applyDecision } from "@/lib/services/approval.service"
 
 export const dynamic = "force-dynamic"
-
-function verifyToken(actionId: string, signalId: string, token: string): boolean {
-  const secret = process.env.APPROVAL_SECRET ?? "dev-secret-change-in-prod"
-  const msg = `${actionId}:${signalId}`
-  const expected = createHmac("sha256", secret).update(msg).digest("base64url").replace(/=/g, "")
-  try {
-    return timingSafeEqual(Buffer.from(token), Buffer.from(expected))
-  } catch {
-    return false
-  }
-}
-
-function getExecuteQueue(): Queue {
-  const redisConn = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
-    maxRetriesPerRequest: null,
-  })
-  return new Queue("execute-action", { connection: redisConn })
-}
-
-async function applyDecision(
-  id: string,
-  token: string,
-  decision: "approved" | "rejected",
-  body: { rejectedReason?: string; modifiedPayload?: Record<string, unknown> } = {},
-): Promise<NextResponse> {
-  const action = await prisma.pendingAction.findUnique({
-    where: { id },
-    select: { id: true, status: true, expiresAt: true, signalId: true, agent: true, actionType: true, actionPayload: true },
-  })
-
-  if (!action) return NextResponse.json({ error: "not_found" }, { status: 404 })
-  if (action.status !== "PENDING") return NextResponse.json({ error: "already_actioned", status: action.status }, { status: 409 })
-  if (action.expiresAt < new Date()) return NextResponse.json({ error: "expired" }, { status: 410 })
-  if (!verifyToken(id, action.signalId, token)) return NextResponse.json({ error: "invalid_token" }, { status: 403 })
-
-  const actor = "founder"
-
-  if (decision === "approved") {
-    const finalPayload = body.modifiedPayload ?? action.actionPayload
-
-    await prisma.pendingAction.update({
-      where: { id },
-      data: { status: "APPROVED", approvedBy: actor, approvedAt: new Date(), actionPayload: finalPayload as object },
-    })
-    await prisma.auditLog.create({
-      data: {
-        signalId: action.signalId,
-        event: "action_approved",
-        actor,
-        payload: { actionId: id, actionType: action.actionType, modifiedPayload: !!body.modifiedPayload },
-      },
-    })
-
-    const queue = getExecuteQueue()
-    await queue.add("exec", {
-      actionId: id,
-      agent: action.agent,
-      actionType: action.actionType,
-      actionPayload: finalPayload,
-      signalId: action.signalId,
-    })
-    await queue.close()
-
-    return NextResponse.json({ status: "approved", actionId: id })
-  } else {
-    await prisma.pendingAction.update({
-      where: { id },
-      data: {
-        status: "REJECTED",
-        rejectedReason: body.rejectedReason ?? "Rejected by founder",
-        rejectedAt: new Date(),
-      },
-    })
-    await prisma.auditLog.create({
-      data: {
-        signalId: action.signalId,
-        event: "action_rejected",
-        actor,
-        payload: { actionId: id, actionType: action.actionType, reason: body.rejectedReason },
-      },
-    })
-
-    return NextResponse.json({ status: "rejected", actionId: id })
-  }
-}
 
 // GET: direct approve/reject from email links (?token=...&decision=approved|rejected)
 export async function GET(
@@ -107,11 +19,10 @@ export async function GET(
   }
 
   const result = await applyDecision(id, token, decision)
-  const resultData = await result.clone().json() as { status?: string }
-  if (resultData.status === "approved" || resultData.status === "rejected") {
-    return NextResponse.redirect(new URL(`/control/approvals?actioned=${decision}&id=${id}`, appUrl))
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error, ...result.extra }, { status: result.httpStatus })
   }
-  return result
+  return NextResponse.redirect(new URL(`/control/approvals?actioned=${result.status}&id=${id}`, appUrl))
 }
 
 // POST: called from the control panel UI
@@ -135,5 +46,9 @@ export async function POST(
     return NextResponse.json({ error: "decision must be 'approved' or 'rejected'" }, { status: 400 })
   }
 
-  return applyDecision(id, token, decision, body)
+  const result = await applyDecision(id, token, decision, body)
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error, ...result.extra }, { status: result.httpStatus })
+  }
+  return NextResponse.json({ status: result.status, actionId: result.actionId })
 }

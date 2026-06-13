@@ -6,21 +6,25 @@ import { useDomainChat } from "@/components/chat/DomainChatProvider"
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart"
 import { NeuroTagLeaderboard } from "@/components/charts/NeuroTagLeaderboard"
 import { AdPerformanceTable, parseAdLeaderboard } from "@/components/charts/AdPerformanceTable"
+import { ActionCenter } from "@/components/charts/ActionCenter"
 import { AdsFunnelView } from "@/components/charts/AdsFunnelView"
 import { TagStageHeatmap } from "@/components/charts/TagStageHeatmap"
 import { VideoFunnelPanel } from "@/components/charts/VideoFunnelPanel"
 import { UniversalSearch } from "@/components/charts/UniversalSearch"
 import { TrendChart } from "@/components/chat/TrendChart"
+import { ICPProfile } from "@/components/charts/ICPProfile"
 import type { ScoredTag } from "@/lib/dashboard/neurotag-scorer"
+import type { ICPData } from "@/lib/dashboard/queries/icp"
 import { buildCreativeIndex, type CreativeSearchSelect } from "@/lib/dashboard/creative-search"
 
-type Tab = "funnel" | "tags" | "ads" | "tagfunnel"
+type Tab = "funnel" | "tags" | "ads" | "tagfunnel" | "audience"
 
 const TABS: { key: Tab; label: string; desc: string }[] = [
-  { key: "funnel",    label: "Funnel",     desc: "Per-stage winners & tags" },
-  { key: "tags",      label: "Tag View",   desc: "Score every neuro-tag" },
-  { key: "ads",       label: "Ad View",    desc: "Per-ad with tag chips" },
-  { key: "tagfunnel", label: "Tag Funnel", desc: "One tag's video retention" },
+  { key: "funnel",    label: "Funnel",      desc: "Per-stage winners & tags" },
+  { key: "tags",      label: "Tag View",    desc: "Score every neuro-tag" },
+  { key: "ads",       label: "Ad View",     desc: "Per-ad with tag chips" },
+  { key: "tagfunnel", label: "Tag Funnel",  desc: "One tag's video retention" },
+  { key: "audience",  label: "Audience IQ", desc: "Who is your ideal buyer" },
 ]
 
 interface Props {
@@ -30,11 +34,14 @@ interface Props {
   spendTrend: Record<string, unknown>[]
   adLeaderboard: Record<string, unknown>[]
   adTagMap: Record<string, unknown>[]
+  adNcrMap: Record<string, unknown>[]
+  priorAdLeaderboard: Record<string, unknown>[]
   funnelAdRows: Record<string, unknown>[]
   funnelTotals: Record<string, unknown>[]
   funnelTagMap: Record<string, unknown>[]
   funnelCategoryStage: Record<string, unknown>[]
   funnelAdAttribution: Record<string, unknown>[]
+  icpData: ICPData
   start: string
   end: string
   brand: number
@@ -47,11 +54,14 @@ export function CreativeIQTabs({
   spendTrend,
   adLeaderboard,
   adTagMap,
+  adNcrMap,
+  priorAdLeaderboard,
   funnelAdRows,
   funnelTotals,
   funnelTagMap,
   funnelCategoryStage,
   funnelAdAttribution,
+  icpData,
   start,
   end,
   brand,
@@ -77,7 +87,7 @@ export function CreativeIQTabs({
     })
   }, [activeTab, adFocus.adId, adFocus.query, tagFocus.tagCode, updateUiContext])
 
-  const adRows = parseAdLeaderboard(adLeaderboard, adTagMap)
+  const adRows = parseAdLeaderboard(adLeaderboard, adTagMap, priorAdLeaderboard, adNcrMap)
   const searchIndex = useMemo(() => buildCreativeIndex(scoredTags, adRows), [scoredTags, adRows])
 
   function handleSearchSelect(sel: CreativeSearchSelect) {
@@ -95,6 +105,9 @@ export function CreativeIQTabs({
 
   return (
     <div className="space-y-4">
+      {/* Action center — kill / refresh / fund / scale signals */}
+      <ActionCenter adLeaderboard={adLeaderboard} priorAdLeaderboard={priorAdLeaderboard} />
+
       {/* Universal search — ads · neuro tags · categories */}
       <UniversalSearch index={searchIndex} onSelect={handleSearchSelect} />
 
@@ -240,6 +253,11 @@ export function CreativeIQTabs({
         >
           <VideoFunnelPanel tags={scoredTags} />
         </ChartCard>
+      )}
+
+      {/* Audience IQ tab — ICP profile */}
+      {activeTab === "audience" && (
+        <ICPProfile icpData={icpData} categoryBreakdown={categoryBreakdown} />
       )}
     </div>
   )

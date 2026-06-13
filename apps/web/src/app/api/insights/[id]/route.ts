@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@multiagent/db"
+import { dismissInsight, snoozeInsight } from "@/lib/services/insight.service"
 
 export const dynamic = "force-dynamic"
 
@@ -12,20 +12,13 @@ export async function PATCH(
     await request.json()
 
   if (body.action === "dismiss") {
-    await prisma.insight.update({
-      where: { id },
-      data: { dismissedAt: new Date() },
-    })
+    await dismissInsight(id)
     return NextResponse.json({ ok: true, action: "dismissed" })
   }
 
   if (body.action === "snooze") {
     const hours = body.snoozeDuration ?? 1
-    const until = new Date(Date.now() + hours * 60 * 60 * 1000)
-    await prisma.insight.update({
-      where: { id },
-      data: { snoozedUntil: until },
-    })
+    const until = await snoozeInsight(id, hours)
     return NextResponse.json({ ok: true, action: "snoozed", until })
   }
 

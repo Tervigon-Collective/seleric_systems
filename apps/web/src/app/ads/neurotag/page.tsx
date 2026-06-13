@@ -5,6 +5,7 @@ import { dateRangeLabel, parseDashboardDateRange, type DashboardSearchParams } f
 import { parseTagRows, scoreTags } from "@/lib/dashboard/neurotag-scorer"
 import { fetchNeurotagData } from "@/lib/dashboard/queries/neurotag"
 import { fetchAdFunnelData, type AdFunnelData } from "@/lib/dashboard/queries/ad-funnel"
+import { fetchICPData, type ICPData } from "@/lib/dashboard/queries/icp"
 import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
 import { buildCreativeIqContext } from "@/lib/chat/domain-context"
 
@@ -22,11 +23,13 @@ export default async function NeuroTagPage({
 
   let data
   let adFunnel: AdFunnelData | null = null
+  let icpData: ICPData | null = null
   let error: string | null = null
   try {
-    ;[data, adFunnel] = await Promise.all([
+    ;[data, adFunnel, icpData] = await Promise.all([
       fetchNeurotagData(range, brand),
       fetchAdFunnelData(range, brand),
+      fetchICPData(range, brand),
     ])
   } catch (e) {
     error = String(e)
@@ -112,11 +115,14 @@ export default async function NeuroTagPage({
         spendTrend={data?.spendTrend ?? []}
         adLeaderboard={data?.adLeaderboard ?? []}
         adTagMap={data?.adTagMap ?? []}
+        adNcrMap={data?.adNcrMap ?? []}
+        priorAdLeaderboard={data?.priorAdLeaderboard ?? []}
         funnelAdRows={adFunnel?.adRows ?? []}
         funnelTotals={adFunnel?.funnelTotals ?? []}
         funnelTagMap={adFunnel?.adTagMap ?? []}
         funnelCategoryStage={adFunnel?.categoryStage ?? []}
         funnelAdAttribution={adFunnel?.adAttribution ?? []}
+        icpData={icpData ?? { ageGender: [], device: [], region: [], placement: [], metaBuyer: [], topProducts: [] }}
         start={range.start}
         end={range.end}
         brand={brand.id}
