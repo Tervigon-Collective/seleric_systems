@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { fmtCurrency, fmtCount, fmtPct } from "./format"
 import { AdPlacementBreakdown } from "./AdPlacementBreakdown"
+import { AdEngagementBreakdown } from "./AdEngagementBreakdown"
 
 const C  = "meta_neurotag_analysis"  // tag map source
 const AP = "meta_ad_performance"     // ad leaderboard source
@@ -29,15 +30,26 @@ export interface AdRow {
   spend: number
   spend_fc: number
   impressions: number
+  reach: number
   link_clicks: number
   clicks: number
   net_revenue: number
   attributed_orders: number
   new_customer_revenue: number
+  add_to_cart: number
+  initiate_checkout: number
   thruplay: number
+  video_views_3s: number
+  video_p50_views: number
+  video_p75_views: number
+  video_p100_views: number
   hook_rate: number
+  hold_rate_p50: number
   hold_rate_p100: number
   cost_per_thruplay: number
+  frequency: number
+  roas_delta: number | null
+  ncr_pct: number
   // derived
   roas: number
   ctr: number
@@ -51,8 +63,10 @@ function n(v: unknown) { const x = Number(v ?? 0); return isFinite(x) ? x : 0 }
 export function parseAdLeaderboard(
   adRows: Record<string, unknown>[],
   tagMapRows: Record<string, unknown>[],
+  priorAdRows: Record<string, unknown>[] = [],
+  ncrMapRows: Record<string, unknown>[] = [],
 ): AdRow[] {
-  // Build tag map from meta_neurotag_analysis rows: ad_id → tags[]
+  // Build tag map: ad_id → tags[]
   const tagMap = new Map<string, { tag_code: string; hack_name: string; category_name: string }[]>()
   for (const r of tagMapRows) {
     const adId = String(r[`${C}.ad_id`] ?? "")
@@ -67,7 +81,24 @@ export function parseAdLeaderboard(
     tagMap.set(adId, list)
   }
 
-  // adRows come from meta_ad_performance (already deduplicated at ad grain by cube)
+  // Prior-period ROAS: ad_id → roas
+  const priorRoasMap = new Map<string, number>()
+  for (const r of priorAdRows) {
+    const adId = String(r[`${AP}.ad_id`] ?? "")
+    if (adId) priorRoasMap.set(adId, n(r[`${AP}.roas`]))
+  }
+
+  // Per-ad NCR: ad_id → { ncr, revenue } (from meta_neurotag_analysis, tagged ads only)
+  const ncrMap = new Map<string, { ncr: number; revenue: number }>()
+  for (const r of ncrMapRows) {
+    const adId = String(r[`${C}.ad_id`] ?? "")
+    if (!adId) continue
+    ncrMap.set(adId, {
+      ncr:     n(r[`${C}.new_customer_revenue_sc`]),
+      revenue: n(r[`${C}.net_revenue_sc`]),
+    })
+  }
+
   return adRows
     .map((r) => {
       const adId        = String(r[`${AP}.ad_id`] ?? "")
@@ -79,6 +110,10 @@ export function parseAdLeaderboard(
       const orders      = n(r[`${AP}.purchases`])
       const thruplay    = n(r[`${AP}.video_thruplay_15s`])
       const hook_rate   = n(r[`${AP}.hook_rate`])
+      const roas        = n(r[`${AP}.roas`])
+      const frequency   = n(r[`${AP}.frequency`])
+      const priorRoas   = priorRoasMap.get(adId) ?? null
+      const ncr         = ncrMap.get(adId)
       return {
         ad_id: adId,
         ad_name:              String(r[`${AP}.ad_name`] ?? "—"),
@@ -87,16 +122,27 @@ export function parseAdLeaderboard(
         spend,
         spend_fc:             spend,
         impressions,
+        reach:                n(r[`${AP}.reach`]),
         link_clicks,
         clicks,
         net_revenue,
         attributed_orders:    orders,
-        new_customer_revenue: 0,
+        new_customer_revenue: ncr?.ncr ?? 0,
+        add_to_cart:          n(r[`${AP}.add_to_cart`]),
+        initiate_checkout:    n(r[`${AP}.initiate_checkout`]),
         thruplay,
+        video_views_3s:       n(r[`${AP}.video_views_3s`]),
+        video_p50_views:      n(r[`${AP}.video_p50_views`]),
+        video_p75_views:      n(r[`${AP}.video_p75_views`]),
+        video_p100_views:     n(r[`${AP}.video_p100_views`]),
         hook_rate,
+        hold_rate_p50:        n(r[`${AP}.hold_rate_p50`]),
         hold_rate_p100:       n(r[`${AP}.hold_rate_p100`]),
         cost_per_thruplay:    n(r[`${AP}.cost_per_thruplay`]),
-        roas:       n(r[`${AP}.roas`]),
+        frequency,
+        roas_delta:           priorRoas !== null ? roas - priorRoas : null,
+        ncr_pct:              ncr && ncr.revenue > 0 ? ncr.ncr / ncr.revenue : 0,
+        roas,
         ctr:        impressions > 0 ? clicks / impressions : 0,
         link_ctr:   impressions > 0 ? link_clicks / impressions : 0,
         cpa:        orders > 0 ? spend / orders : 0,
@@ -107,7 +153,7 @@ export function parseAdLeaderboard(
     .sort((a, b) => b.spend - a.spend)
 }
 
-type SortKey = "spend" | "roas" | "ctr" | "hook_rate" | "cpa" | "orders"
+type SortKey = "spend" | "roas" | "ctr" | "hook_rate" | "cpa" | "orders" | "frequency"
 
 interface Props {
   rows: AdRow[]
@@ -200,9 +246,12 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
                 Tags
               </th>
               {hdr("spend",     "Spend")}
+              {hdr("frequency", "Freq")}
               {hdr("hook_rate", "Hook %")}
               {hdr("ctr",       "CTR")}
               {hdr("roas",      "ROAS")}
+              <th className="px-3 py-2 text-right text-xs font-medium text-stone-400 dark:text-night-500 whitespace-nowrap">ROAS Δ</th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-stone-400 dark:text-night-500 whitespace-nowrap">NCR %</th>
               {hdr("orders",    "Orders")}
               {hdr("cpa",       "CPA")}
             </tr>
@@ -260,6 +309,11 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
                     <td className="px-3 py-2 text-right tabular-nums text-stone-700 dark:text-night-200">
                       {fmtCurrency(ad.spend)}
                     </td>
+                    <td className={`px-3 py-2 text-right tabular-nums text-xs ${
+                      ad.frequency > 3.5 ? "text-red-400 font-medium" : ad.frequency > 2 ? "text-amber-400" : "text-stone-500 dark:text-night-400"
+                    }`}>
+                      {ad.frequency > 0 ? ad.frequency.toFixed(1) : "—"}
+                    </td>
                     <td className={`px-3 py-2 text-right tabular-nums font-medium ${
                       ad.hook_rate >= 20 ? "text-emerald-500" : ad.hook_rate >= 10 ? "text-stone-700 dark:text-night-200" : "text-stone-400 dark:text-night-600"
                     }`}>
@@ -273,6 +327,18 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
                     }`}>
                       {ad.roas.toFixed(2)}×
                     </td>
+                    <td className={`px-3 py-2 text-right tabular-nums text-xs ${
+                      ad.roas_delta === null ? "text-stone-400 dark:text-night-700" :
+                      ad.roas_delta > 0 ? "text-emerald-500" : "text-red-400"
+                    }`}>
+                      {ad.roas_delta === null ? "—" :
+                        `${ad.roas_delta > 0 ? "▲" : "▼"} ${Math.abs(ad.roas_delta).toFixed(2)}×`}
+                    </td>
+                    <td className={`px-3 py-2 text-right tabular-nums text-xs ${
+                      ad.ncr_pct > 0.6 ? "text-emerald-500" : ad.ncr_pct > 0.3 ? "text-stone-600 dark:text-night-300" : "text-stone-400 dark:text-night-600"
+                    }`}>
+                      {ad.ncr_pct > 0 ? `${(ad.ncr_pct * 100).toFixed(0)}%` : "—"}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums text-stone-600 dark:text-night-300">
                       {fmtCount(ad.attributed_orders)}
                     </td>
@@ -283,52 +349,57 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
 
                   {isExpanded && (
                     <tr key={`${ad.ad_id}-expanded`} className="bg-stone-50 dark:bg-night-900 border-b border-stone-100 dark:border-night-850">
-                      <td colSpan={2} className="px-3 py-3 align-top">
-                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
-                          Neuro Tags ({ad.tags.length})
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {ad.tags.map((t) => (
-                            <div
-                              key={t.tag_code}
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] ${tagChipCls(t.category_name)}`}
-                            >
-                              <span className="font-mono font-medium">{t.tag_code}</span>
-                              <span className="opacity-75">· {t.hack_name}</span>
+                      <td colSpan={11} className="px-3 py-3">
+                        <div className="flex gap-6">
+                          {/* Tags */}
+                          <div className="w-48 shrink-0">
+                            <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
+                              Neuro Tags ({ad.tags.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ad.tags.map((t) => (
+                                <div
+                                  key={t.tag_code}
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] ${tagChipCls(t.category_name)}`}
+                                >
+                                  <span className="font-mono font-medium">{t.tag_code}</span>
+                                  <span className="opacity-75">· {t.hack_name}</span>
+                                </div>
+                              ))}
+                              {ad.tags.length === 0 && (
+                                <span className="text-stone-400 dark:text-night-600 text-xs italic">No tags mapped</span>
+                              )}
                             </div>
-                          ))}
-                          {ad.tags.length === 0 && (
-                            <span className="text-stone-400 dark:text-night-600 text-xs italic">No tags mapped</span>
-                          )}
-                        </div>
-                      </td>
-                      <td colSpan={6} className="px-3 py-3 align-top">
-                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
-                          Video Performance
-                        </p>
-                        <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                          {[
-                            { label: "Hook Rate",      value: ad.hook_rate > 0 ? `${ad.hook_rate.toFixed(1)}%` : "—" },
-                            { label: "Completion",     value: ad.hold_rate_p100 > 0 ? `${ad.hold_rate_p100.toFixed(1)}%` : "—" },
-                            { label: "Thruplay",       value: fmtCount(ad.thruplay) },
-                            { label: "₹/Thruplay",    value: ad.cost_per_thruplay > 0 ? fmtCurrency(ad.cost_per_thruplay) : "—" },
-                            { label: "Link Clicks",    value: fmtCount(ad.link_clicks) },
-                            { label: "Purchase Value", value: fmtCurrency(ad.net_revenue) },
-                            { label: "ROAS",           value: `${ad.roas.toFixed(2)}×` },
-                          ].map((m) => (
-                            <div key={m.label} className="min-w-0">
-                              <p className="text-[9px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{m.label}</p>
-                              <p className="text-xs font-semibold tabular-nums text-stone-700 dark:text-night-200">{m.value}</p>
-                            </div>
-                          ))}
+                          </div>
+
+                          {/* Video funnel */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-2 uppercase tracking-wide">
+                              Video Funnel
+                            </p>
+                            <VideoFunnel ad={ad} />
+                          </div>
                         </div>
                       </td>
                     </tr>
                   )}
 
+                  {/* Engagement context (age/gender, publisher, device) */}
+                  {isExpanded && start && end && brand !== undefined && (
+                    <tr key={`${ad.ad_id}-engagement`} className="bg-stone-50 dark:bg-night-900 border-b border-stone-100 dark:border-night-850">
+                      <td colSpan={11} className="px-3 pb-3 pt-2 align-top">
+                        <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
+                          Audience &amp; Platform Context
+                        </p>
+                        <AdEngagementBreakdown adId={ad.ad_id} start={start} end={end} brand={brand} />
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Per-ad placement breakdown */}
                   {isExpanded && start && end && brand !== undefined && (
                     <tr key={`${ad.ad_id}-placement`} className="bg-stone-50 dark:bg-night-900 border-b border-stone-100 dark:border-night-850">
-                      <td colSpan={8} className="px-3 pb-3 align-top">
+                      <td colSpan={11} className="px-3 pb-3 align-top">
                         <p className="text-[10px] font-medium text-stone-400 dark:text-night-600 mb-1.5 uppercase tracking-wide">
                           Placement &amp; Platform
                         </p>
@@ -341,7 +412,7 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
             })}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-sm text-stone-400 dark:text-night-600">
+                <td colSpan={11} className="px-3 py-8 text-center text-sm text-stone-400 dark:text-night-600">
                   No ads match your search.
                 </td>
               </tr>
@@ -349,6 +420,81 @@ export function AdPerformanceTable({ rows, focusQuery, focusAdId, focusNonce = 0
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ── Video funnel mini-chart ──────────────────────────────────────────────────
+
+function VideoFunnel({ ad }: { ad: AdRow }) {
+  const steps = [
+    { label: "3s Views",   count: ad.video_views_3s,  pct: ad.impressions > 0 ? ad.video_views_3s  / ad.impressions : 0 },
+    { label: "Thruplay",   count: ad.thruplay,         pct: ad.impressions > 0 ? ad.thruplay         / ad.impressions : 0 },
+    { label: "50% View",   count: ad.video_p50_views,  pct: ad.impressions > 0 ? ad.video_p50_views  / ad.impressions : 0 },
+    { label: "75% View",   count: ad.video_p75_views,  pct: ad.impressions > 0 ? ad.video_p75_views  / ad.impressions : 0 },
+    { label: "Completion", count: ad.video_p100_views, pct: ad.impressions > 0 ? ad.video_p100_views / ad.impressions : 0 },
+  ].filter((s) => s.count > 0)
+
+  const maxPct = Math.max(...steps.map((s) => s.pct), 0.001)
+
+  const kpis = [
+    { label: "Hook Rate",     value: ad.hook_rate > 0     ? `${ad.hook_rate.toFixed(1)}%`     : "—", hi: ad.hook_rate >= 20 },
+    { label: "50% Hold",      value: ad.hold_rate_p50 > 0 ? `${ad.hold_rate_p50.toFixed(1)}%` : "—", hi: false },
+    { label: "Completion",    value: ad.hold_rate_p100 > 0 ? `${ad.hold_rate_p100.toFixed(1)}%` : "—", hi: false },
+    { label: "₹/Thruplay",   value: ad.cost_per_thruplay > 0 ? fmtCurrency(ad.cost_per_thruplay) : "—", hi: false },
+    { label: "ATC",           value: ad.add_to_cart > 0  ? fmtCount(ad.add_to_cart)          : "—", hi: false },
+    { label: "Checkout",      value: ad.initiate_checkout > 0 ? fmtCount(ad.initiate_checkout) : "—", hi: false },
+    { label: "Purchase Value", value: fmtCurrency(ad.net_revenue), hi: false },
+    { label: "ROAS",          value: `${ad.roas.toFixed(2)}×`, hi: ad.roas >= 2.5 },
+  ]
+
+  return (
+    <div className="space-y-3">
+      {/* KPI strip */}
+      <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+        {kpis.map((k) => (
+          <div key={k.label} className="min-w-0">
+            <p className="text-[9px] text-stone-400 dark:text-night-600 uppercase tracking-wide">{k.label}</p>
+            <p className={`text-xs font-semibold tabular-nums ${k.hi ? "text-emerald-500" : "text-stone-700 dark:text-night-200"}`}>
+              {k.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Funnel bars */}
+      {steps.length > 0 && (
+        <div className="space-y-1">
+          {/* Header row */}
+          <div className="flex items-center gap-2 pb-0.5">
+            <span className="text-[9px] text-stone-400 dark:text-night-600 w-16 text-right">
+              Impr {fmtCount(ad.impressions)}
+            </span>
+            <div className="flex-1 h-px bg-stone-200 dark:bg-night-800" />
+            <span className="text-[9px] text-stone-400 dark:text-night-600 w-10 text-right">% impr</span>
+            <span className="text-[9px] text-stone-400 dark:text-night-600 w-10 text-right">count</span>
+          </div>
+          {steps.map((s) => (
+            <div key={s.label} className="flex items-center gap-2">
+              <span className="text-[9px] text-stone-400 dark:text-night-600 w-16 text-right whitespace-nowrap">
+                {s.label}
+              </span>
+              <div className="flex-1 h-2 rounded-full bg-stone-200 dark:bg-night-800">
+                <div
+                  className="h-2 rounded-full bg-indigo-500/60"
+                  style={{ width: `${(s.pct / maxPct) * 100}%` }}
+                />
+              </div>
+              <span className="text-[9px] tabular-nums text-stone-500 dark:text-night-400 w-10 text-right">
+                {(s.pct * 100).toFixed(1)}%
+              </span>
+              <span className="text-[9px] tabular-nums text-stone-400 dark:text-night-600 w-10 text-right">
+                {fmtCount(s.count)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

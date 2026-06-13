@@ -2,6 +2,9 @@
 # Multi-Agent Business Intelligence System
 # ═══════════════════════════════════════════════════════════
 
+# ── Generated files ───────────────────────────────────────
+apps/web/src/generated/
+
 # ── Environment & secrets ─────────────────────────────────
 .env
 .env.local

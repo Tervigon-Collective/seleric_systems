@@ -11,6 +11,7 @@ const links = [
   { href: "/pnl", label: "P&L Dashboard" },
   { href: "/insights", label: "Insights" },
   { href: "/ads", label: "Ads" },
+  { href: "/attribution", label: "Attribution" },
   { href: "/ads/neurotag", label: "Creative IQ" },
   { href: "/shopify", label: "Shopify" },
   { href: "/chat", label: "Chat" },

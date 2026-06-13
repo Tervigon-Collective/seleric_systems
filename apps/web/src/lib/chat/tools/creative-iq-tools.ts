@@ -1,6 +1,10 @@
 import { z } from "zod"
 import { dateRangeSchema } from "../schemas"
 import { fail, okRows, runTool } from "../tool-result"
+import { parseTagRows, scoreTags } from "@/lib/dashboard/neurotag-scorer"
+import { fetchNeurotagData } from "@/lib/dashboard/queries/neurotag"
+import { fetchAdFunnelData } from "@/lib/dashboard/queries/ad-funnel"
+import { DEFAULT_BRAND_ID } from "@/lib/dashboard/brand-filter-constants"
 
 export function getCreativeIQInstructions(): string {
   return `## Creative IQ — Neuro Tag Analysis
@@ -38,7 +42,9 @@ When user asks about **creatives, neuro tags, ads, video funnel, hook rate, comp
 - **Misleading hooks** require immediate action: either improve landing page (to convert) or pause to save budget`
 }
 
-export function createCreativeIQTools() {
+export function createCreativeIQTools(brandId?: number) {
+  const effectiveBrandId = brandId ?? DEFAULT_BRAND_ID
+
   return {
     getCreativeIQAnalysis: {
       description:
@@ -62,7 +68,13 @@ export function createCreativeIQTools() {
             "Include full video funnel analysis (reach → impressions → video depths → orders). Set false for tag-only view."
           ),
       }),
-      execute: ({ startDate, endDate, tagCode, adId, includeFunnel }: {
+      execute: ({
+        startDate,
+        endDate,
+        tagCode,
+        adId,
+        includeFunnel,
+      }: {
         startDate: string
         endDate?: string
         tagCode?: string
@@ -70,27 +82,59 @@ export function createCreativeIQTools() {
         includeFunnel?: boolean
       }) =>
         runTool(async () => {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/chat/creative-iq`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              startDate,
-              endDate: endDate || startDate,
-              tagCode,
-              adId,
-              includeFunnel: includeFunnel ?? true,
-            }),
-          })
+          const range = {
+            start: startDate,
+            end: endDate || startDate,
+            spanDays: 30,
+            isDefault: false,
+          }
+          const brand = { id: effectiveBrandId, isDefault: false }
 
-          if (!response.ok) {
-            const text = await response.text()
-            return fail(`Creative IQ fetch failed: ${response.status} ${text}`)
+          const [neurotagData, adFunnelData] = await Promise.all([
+            fetchNeurotagData(range, brand),
+            (includeFunnel ?? true) ? fetchAdFunnelData(range, brand) : Promise.resolve(null),
+          ])
+
+          const rawTags = neurotagData.tagLeaderboard ?? []
+          const parsed = parseTagRows(rawTags)
+          const scoredTags = scoreTags(parsed)
+          const misleadingHooks = scoredTags.filter((t) => t.classification === "misleading_hook")
+
+          let filteredTags = scoredTags
+          if (tagCode) {
+            filteredTags = scoredTags.filter(
+              (t) => t.tag_code?.toLowerCase() === tagCode.toLowerCase()
+            )
           }
 
-          const data = await response.json()
-          return okRows(data.rows || [], {
-            type: data.type || "table",
-          })
+          let filteredAds = neurotagData.adLeaderboard ?? []
+          if (adId) {
+            filteredAds = filteredAds.filter((ad: Record<string, unknown>) =>
+              String(ad["meta_ad_performance.ad_id"] || ad["ad_id"] || "").includes(adId)
+            )
+          }
+
+          const rows: Record<string, unknown>[] = [
+            ...filteredTags.map((tag) => ({ _type: "tag", ...tag })),
+          ]
+
+          if ((includeFunnel ?? true) && adFunnelData) {
+            rows.push({ _type: "funnel_totals", ...adFunnelData.funnelTotals?.[0] })
+          }
+
+          if (adId || filteredTags.length === 0) {
+            rows.push(...filteredAds.map((ad: Record<string, unknown>) => ({ _type: "ad", ...ad })))
+          }
+
+          if (misleadingHooks.length > 0) {
+            rows.push(...misleadingHooks.map((tag) => ({ _type: "misleading_hook", ...tag })))
+          }
+
+          if (!rows.length) {
+            return fail("No data returned for the given filters and date range.")
+          }
+
+          return okRows(rows, { type: "creative_iq" })
         }),
     },
   }

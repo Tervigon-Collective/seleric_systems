@@ -22,6 +22,8 @@ import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-fil
 import { funnelFromAggregate } from "@/lib/dashboard/page-helpers"
 
 import { fetchAdsDashboardData } from "@/lib/dashboard/queries/ads"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildMetaAdsContext } from "@/lib/chat/domain-context"
 
 import {
 
@@ -86,6 +88,12 @@ export default async function AdsPage({
 
     <main className="p-6 space-y-6">
 
+      {data && (
+        <DomainChatRegistrar
+          context={buildMetaAdsContext(data, range, brand)}
+        />
+      )}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
 
         <div>
@@ -102,7 +110,7 @@ export default async function AdsPage({
 
             <p className="mt-2 text-sm text-amber-400">
 
-              Cube unavailable — charts may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
 
             </p>
 

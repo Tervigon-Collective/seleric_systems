@@ -9,13 +9,14 @@ import { PnlAvailabilityBanner } from "@/components/dashboard/PnlAvailabilityBan
 import { PnlBreakdownTable } from "@/components/dashboard/PnlBreakdownTable"
 import { PnlTimeSeriesSection } from "@/components/dashboard/PnlTimeSeriesSection"
 import { cogsBreakdownFromRow } from "@/lib/dashboard/cogs-breakdown"
-import { getLastCubeError } from "@/lib/dashboard/cube-query"
 import {
   dateRangeLabel,
   parseDashboardDateRange,
   type DashboardSearchParams,
 } from "@/lib/dashboard/date-ranges"
 import { fetchPnlDashboardData, type PnlDashboardData } from "@/lib/dashboard/queries/pnl"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildPnlContext } from "@/lib/chat/domain-context"
 
 export const revalidate = 60
 
@@ -43,15 +44,9 @@ export default async function PnlDashboardPage({
   let error: string | null = null
 
   try {
-    const fetched = await fetchPnlDashboardData(range, brand)
-    data = fetched
-    const cubeErr = getLastCubeError()
-    const hasData = fetched.schema.available.some((k) => fetched.periodRow[k] != null)
-    if (cubeErr && !hasData) {
-      error = `Cube MCP unreachable (${cubeErr}). Check network or set CUBE_MCP_URL.`
-    }
+    data = await fetchPnlDashboardData(range, brand)
   } catch (e) {
-    error = String(e)
+    error = e instanceof Error ? e.message : String(e)
     data = null
   }
 
@@ -60,19 +55,25 @@ export default async function PnlDashboardPage({
 
   return (
     <main className="p-6 space-y-6">
+      {data && (
+        <DomainChatRegistrar
+          context={buildPnlContext(data, range, brand)}
+        />
+      )}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">P&L Dashboard</h1>
           <p className="text-sm text-stone-500 dark:text-night-500 mt-1">
-            Audited financial breakdown · gold.fct_daily_pnl · {brandText} · {rangeLabel} · IST order_date
+            Direct from gold.fct_daily_pnl · {brandText} · {rangeLabel} · IST report_date · refund-event axis
           </p>
           <p className="text-xs text-stone-400 dark:text-night-600 mt-1">
-            gross_profit = net_sales_excl_tax − COGS · net_profit = gross_profit − ad spend − ops costs
+            net_sales = gross_sales − discounts − returns − adjustments · cancellations are audit-only · gross_profit
+            = net_sales − COGS · net_profit = gross_profit − ad spend − shipping − packaging − gateway − RTO ·
+            Incl-GST column = excl × 1.18 on taxable revenue, costs/ad spend unchanged
           </p>
           {error && (
-            <p className="mt-2 text-sm text-amber-400">
-              Cube unavailable — data may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
-            </p>
+            <p className="mt-2 text-sm text-amber-400">ClickHouse error — {error}</p>
           )}
         </div>
         <DashboardFilterControls

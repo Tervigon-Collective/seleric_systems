@@ -12,6 +12,8 @@ import { DashboardFilterControls } from "@/components/dashboard/DashboardFilterC
 import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-filter"
 import { geoLabel, RETURN_CANCEL_SERIES, skuLabel, utmLabel } from "@/lib/dashboard/page-helpers"
 import { fetchShopifyDashboardData } from "@/lib/dashboard/queries/shopify"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildShopifyContext } from "@/lib/chat/domain-context"
 import {
   dateRangeLabel,
   parseDashboardDateRange,
@@ -63,6 +65,12 @@ export default async function ShopifyPage({
 
   return (
     <main className="p-6 space-y-6">
+      {data && (
+        <DomainChatRegistrar
+          context={buildShopifyContext(data, range, brand)}
+        />
+      )}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">Shopify Store</h1>
@@ -71,7 +79,7 @@ export default async function ShopifyPage({
           </p>
           {error && (
             <p className="mt-2 text-sm text-amber-400">
-              Cube unavailable — charts may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
             </p>
           )}
         </div>

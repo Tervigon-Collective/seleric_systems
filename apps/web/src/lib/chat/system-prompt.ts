@@ -2,6 +2,8 @@ import type { SchemaCache } from "@/lib/cube-client"
 import { buildSchemaContext } from "@/lib/cube-client"
 import { buildDomainInstructions } from "./tools"
 import { daysAgoIST, todayIST } from "./dates"
+import type { DomainChatContext } from "./domain-context"
+import { buildPageContextInstructions } from "./instructions/domain-chat"
 
 function buildBaseInstructions(): string {
   const today = todayIST()
@@ -89,10 +91,11 @@ Do NOT render raw Cube output directly when it exceeds ~50 rows — it produces 
 - Charts render automatically — provide narrative insight only after tools complete`
 }
 
-export function buildChatSystemPrompt(schema: SchemaCache): string {
+export function buildChatSystemPrompt(schema: SchemaCache, ctx?: DomainChatContext | null): string {
   return [
     buildBaseInstructions(),
     buildDomainInstructions(schema),
     buildSchemaContext(schema),
+    ...(ctx ? [buildPageContextInstructions(ctx)] : []),
   ].join("\n\n")
 }

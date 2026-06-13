@@ -61,6 +61,14 @@ export function AdsFunnelView({ adRows, funnelTotals, adTagMap, adAttribution }:
   const gapKey = totals.stages.find((s) => s.isGap)?.key ?? "v3s"
   const [selected, setSelected] = useState<string>(gapKey)
 
+  const biggestLeak = useMemo(() => {
+    const candidates = totals.stages.filter(
+      (s) => s.key !== "reach" && s.key !== "thruplay" && s.prevLabel && s.pctOfPrev > 0 && s.pctOfPrev < 100
+    )
+    if (candidates.length === 0) return null
+    return candidates.reduce((worst, s) => s.pctOfPrev < worst.pctOfPrev ? s : worst)
+  }, [totals.stages])
+
   const analysis = useMemo(() => analyzeStage(ads, selected), [ads, selected])
   // Use the exact (no-dimension) totals for the header so it matches the funnel bar.
   const selectedStage = totals.stages.find((s) => s.key === selected) ?? analysis?.stage
@@ -75,6 +83,19 @@ export function AdsFunnelView({ adRows, funnelTotals, adTagMap, adAttribution }:
 
   return (
     <div className="space-y-4">
+      {/* Biggest funnel leak callout */}
+      {biggestLeak && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2">
+          <span className="shrink-0 text-xs font-semibold text-amber-400">Biggest leak</span>
+          <span className="text-xs text-stone-700 dark:text-night-200">
+            {biggestLeak.prevLabel} → {biggestLeak.label}
+          </span>
+          <span className="ml-auto shrink-0 tabular-nums text-xs text-stone-400 dark:text-night-500">
+            only {biggestLeak.pctOfPrev.toFixed(0)}% pass through · {fmtCount(biggestLeak.count)} {biggestLeak.label.toLowerCase()}
+          </span>
+        </div>
+      )}
+
       {/* Audience summary + real (warehouse) attribution */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

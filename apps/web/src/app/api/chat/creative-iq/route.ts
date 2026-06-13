@@ -1,9 +1,8 @@
-"use server"
-
 import { parseTagRows, scoreTags } from "@/lib/dashboard/neurotag-scorer"
 import { fetchNeurotagData } from "@/lib/dashboard/queries/neurotag"
 import { fetchAdFunnelData } from "@/lib/dashboard/queries/ad-funnel"
 import { serverLog } from "@/lib/server-log"
+import { DEFAULT_BRAND_ID } from "@/lib/dashboard/brand-filter-constants"
 
 interface CreativeIQRequest {
   startDate: string
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       isDefault: false,
     }
 
-    const brand: DashboardBrandFilter = { id: 0, isDefault: true }
+    const brand: DashboardBrandFilter = { id: DEFAULT_BRAND_ID, isDefault: false }
 
     // Fetch neurotag + ad funnel data in parallel
     const [neurotagData, adFunnelData] = await Promise.all([

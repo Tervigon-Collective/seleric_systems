@@ -26,6 +26,8 @@ import { cogsBreakdownFromRow } from "@/lib/dashboard/cogs-breakdown"
 
 import { fetchMainDashboardData } from "@/lib/dashboard/queries/main"
 import { getLastCubeError } from "@/lib/dashboard/cube-query"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildDashboardContext } from "@/lib/chat/domain-context"
 
 import {
 
@@ -74,7 +76,7 @@ export default async function DashboardPage({
       (data?.netProfitTrend?.length ?? 0) > 0
 
     if (cubeErr && !hasAnyData) {
-      error = `Cube MCP unreachable (${cubeErr}). Check network or set CUBE_MCP_URL to your local MCP.`
+      error = `Cube unreachable (${cubeErr}). Check network or set CUBE_API_URL.`
     }
 
   } catch (e) {
@@ -100,6 +102,12 @@ export default async function DashboardPage({
 
     <main className="p-6 space-y-6">
 
+      {data && (
+        <DomainChatRegistrar
+          context={buildDashboardContext(data, range, brand)}
+        />
+      )}
+
       <header className="flex flex-wrap items-start justify-between gap-4">
 
         <div>
@@ -116,7 +124,7 @@ export default async function DashboardPage({
 
             <p className="mt-2 text-sm text-amber-400">
 
-              Cube unavailable — charts may be empty. Check CUBE_MCP_URL / SELERIC_API_KEY.
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
 
             </p>
 
