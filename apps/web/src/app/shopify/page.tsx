@@ -92,10 +92,14 @@ export default async function ShopifyPage({
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ChartCard title="Orders & gross revenue daily" subtitle="net_orders bar · gross revenue + AOV lines" cube="shopify_orders">
+        <ChartCard
+          title="Orders & gross revenue daily"
+          subtitle="orders placed bar (every Shopify 'Created at' row) · gross revenue + AOV lines"
+          cube="shopify_orders"
+        >
           <ComboLineBarChart
             rows={data?.revenueOrdersDaily ?? []}
-            barMeasures={["shopify_orders.net_orders"]}
+            barMeasures={["shopify_orders.orders"]}
             lineMeasures={["shopify_orders.gross_revenue", "shopify_orders.aov"]}
           />
         </ChartCard>
@@ -116,12 +120,16 @@ export default async function ShopifyPage({
           />
         </ChartCard>
 
-        <ChartCard title="Gross revenue by geography" subtitle="Country & province ranked · gross_revenue" cube="shopify_orders">
+        <ChartCard
+          title="Gross revenue by geography"
+          subtitle="Country & province ranked · gross_revenue · order count = orders placed"
+          cube="shopify_orders"
+        >
           <RankedList
             rows={geoRows}
             labelKey="geo"
             valueKey="shopify_orders.gross_revenue"
-            countKey="shopify_orders.net_orders"
+            countKey="shopify_orders.orders"
           />
         </ChartCard>
 

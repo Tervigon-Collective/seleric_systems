@@ -14,15 +14,24 @@ function derivePnlMeasures(schema: SchemaCache): readonly string[] {
 export function getPnlInstructions(schema: SchemaCache): string {
   const measures = derivePnlMeasures(schema)
   const spendField = measures.find((m) => m.includes("ad_spend")) ?? "daily_pnl.total_ad_spend"
-  const ordersField = measures.find((m) => m.includes("orders")) ?? "daily_pnl.total_orders"
+  const ordersField =
+    measures.find((m) => m === "daily_pnl.orders_created") ??
+    measures.find((m) => m.includes("orders_created")) ??
+    "daily_pnl.orders_created"
 
   return `## P&L tools
 - **getDailyPnl** — P&L for any date range as one aggregate row OR day-by-day trend. Set groupByDay=false for period totals; groupByDay=true for daily chart.
 - **getPnlTrend** — P&L broken down by week or month (preferred for "per month", "monthly trend", "by week"). Adds derived CAC per period.
 - **getChannelBreakdown** — Meta vs Google vs Organic split for any date range.
 
+## Order count vocabulary (very important — pick the right one)
+- **orders_created** — every Shopify "Created at" placement: active + payment_pending (COD) + cancelled + refunded + voided + RTO draft. This is the universe the brand processed. Use as denominator for blended CAC, blended AOV-from-placements, conversion rate from sessions, and the headline "Orders" KPI.
+- **total_orders** — active + cancelled only. Financial slice; do NOT divide ad spend by this.
+- **active_orders** — \`order_status = active\`. Confirmed/paid only. Useful for "confirmed orders" tiles.
+- **refunded_orders / voided_orders / cancelled_orders** — sub-buckets for diagnostics.
+
 ## Derived metrics (not Cube measures — compute after fetch)
-- **CAC** = total_ad_spend ÷ total_orders for the period (field keys: ${spendField} and ${ordersField})
+- **CAC** = total_ad_spend ÷ orders_created for the period (field keys: ${spendField} and ${ordersField}). Ad spend is paid for every placement, so the denominator must be orders_created — using total_orders or active_orders structurally under-states CAC by 5-50% depending on COD share.
 - **LTV** is not a stored field — the UI auto-derives **Est. LTV ≈ AOV × gross margin % × 1.4** per period and shows it in the KPI strip. This is an approximation, NOT cohort-based repeat revenue. If the user asks about LTV accuracy, flag it as a rough proxy; do not say LTV doesn't exist.
 
 ## When to use which P&L tool

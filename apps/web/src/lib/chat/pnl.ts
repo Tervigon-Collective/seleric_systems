@@ -3,6 +3,12 @@ import { extractRows, type CubeRow } from "./cube-rows"
 
 // Fallback when schema is unavailable. The preferred path is to derive
 // these from the live SchemaCache via createPnlTools(schema).
+//
+// Orders denominator: we use `daily_pnl.orders_created` (every Shopify
+// placement) for blended CAC because ad spend is paid for every order placed,
+// including COD payment_pending, cancelled, refunded and voided ones.
+// `daily_pnl.total_orders` (active + cancelled only) hides ~40-50% of demand
+// on COD-heavy brands and yields a CAC that's structurally too low.
 export const PNL_MEASURES = [
   "daily_pnl.gross_revenue",
   "daily_pnl.total_sales_ex_gst",
@@ -10,7 +16,7 @@ export const PNL_MEASURES = [
   "daily_pnl.gross_profit",
   "daily_pnl.total_ad_spend",
   "daily_pnl.net_profit",
-  "daily_pnl.total_orders",
+  "daily_pnl.orders_created",
 ] as const
 
 export const IST_TIMEZONE = "Asia/Kolkata"
@@ -18,7 +24,9 @@ export const IST_TIMEZONE = "Asia/Kolkata"
 export function enrichPnlRows(rows: CubeRow[]): CubeRow[] {
   return rows.map((row) => {
     const spend = Number(row["daily_pnl.total_ad_spend"] ?? 0)
-    const orders = Number(row["daily_pnl.total_orders"] ?? 0)
+    const orders = Number(
+      row["daily_pnl.orders_created"] ?? row["daily_pnl.total_orders"] ?? 0
+    )
     const cac = orders > 0 ? spend / orders : null
     return { ...row, "derived.cac": cac }
   })

@@ -39,17 +39,33 @@ export function AttributionOrdersView({ data }: Props) {
     }
   })
 
+  // Compute two coverage rates from the placed_orders partition (one row per
+  // platform × campaign × day). `attributed_orders` is the cube's active-only
+  // count and is shown only for the per-row "Attr. Orders" column. Real
+  // coverage is derived from `placed_orders` against the unresolvable ('other'
+  // platform / missing campaign) slice.
   const totalPlaced = orderRows.reduce((s, r) => s + n(r["order_attribution.placed_orders"]), 0)
   const totalAttribted = orderRows.reduce((s, r) => s + n(r["order_attribution.attributed_orders"]), 0)
-  const totalUnattributed = totalPlaced - totalAttribted
-  const attrPct = totalPlaced > 0 ? ((totalAttribted / totalPlaced) * 100).toFixed(1) : "0"
+  const unresolvedPlaced = orderRows.reduce((s, r) => {
+    const platform = String(r["order_attribution.lt_platform"] ?? "other").toLowerCase()
+    const campaign = r["order_attribution.lt_campaign_name"]
+    const isUnresolved = platform === "other" || !campaign
+    return s + (isUnresolved ? n(r["order_attribution.placed_orders"]) : 0)
+  }, 0)
+  const resolvedPlaced = totalPlaced - unresolvedPlaced
+  const coverageRate = totalPlaced > 0 ? ((resolvedPlaced / totalPlaced) * 100).toFixed(1) : "0"
+  const activeAttrPct = totalPlaced > 0 ? ((totalAttribted / totalPlaced) * 100).toFixed(1) : "0"
 
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-stone-200 bg-stone-50 px-4 py-2 text-xs text-stone-600 dark:border-night-800 dark:bg-night-875 dark:text-night-400">
-        Placed Orders = all orders touching the channel. Attr. Orders = orders with last-touch credit granted. Attr. Gap = placed − attributed.
-        Attribution rate: <strong>{attrPct}%</strong> ({totalAttribted} attributed of {totalPlaced} placed). Unattributed: {totalUnattributed}.
-        ⚠ = no campaign resolved.
+        Placed Orders = all Shopify placements with this last-touch (every status, incl. COD pending / cancelled / voided).
+        Attr. Orders = active-status orders only (cube measure quirk — see ⚠).
+        Attr. Gap = placed − active attributed.
+        <br />
+        Coverage rate: <strong>{coverageRate}%</strong> ({resolvedPlaced} of {totalPlaced} resolved to a campaign + paid channel; {unresolvedPlaced} unresolvable).
+        Active-attributed rate: <strong>{activeAttrPct}%</strong> ({totalAttribted} of {totalPlaced}) — diagnostic only.
+        ⚠ = no campaign resolved OR cube measure drops payment_pending / cancelled / refunded / voided.
       </div>
 
       <ChartCard

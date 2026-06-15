@@ -14,7 +14,14 @@ function num(row: CubeRow, key: string | null): number {
 
 export function deriveRowMetrics(row: CubeRow): CubeRow {
   const spendKey = findKey(row, [/ad_spend|total_ad_spend|spend/i])
-  const ordersKey = findKey(row, [/total_orders|orders(?!.*rate)/i])
+  // Prefer orders_created (every placement) over total_orders (active + cancelled)
+  // or net_orders (excludes returned). CAC denominator must include every
+  // placement the brand paid ad spend for — including payment_pending COD,
+  // cancelled, refunded, voided rows.
+  const ordersKey =
+    findKey(row, [/\.orders_created$|orders_created/i]) ??
+    findKey(row, [/\.orders$|^orders$/i]) ??
+    findKey(row, [/total_orders|net_orders|orders(?!.*rate)/i])
   const revenueKey = findKey(row, [/sales_ex|gross_revenue|revenue/i])
   const grossProfitKey = findKey(row, [/gross_profit/i])
   const aovKey = findKey(row, [/\.aov|average_order/i])
@@ -66,4 +73,4 @@ export function deriveRowMetrics(row: CubeRow): CubeRow {
 }
 
 export const DERIVED_FORMULA_FOOTER =
-  "CAC = ad spend ÷ orders. Est. LTV = AOV (ex-GST) × gross margin % × 1.4 (estimated repeat frequency). LTV:CAC = Est. LTV ÷ CAC."
+  "CAC = ad spend ÷ orders_created (every placement, incl. COD pending / cancelled / voided). Est. LTV = AOV (ex-GST) × gross margin % × 1.4 (estimated repeat frequency). LTV:CAC = Est. LTV ÷ CAC."

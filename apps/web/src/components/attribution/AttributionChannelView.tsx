@@ -1,20 +1,17 @@
+import Link from "next/link"
 import { ChartCard } from "@/components/charts/ChartCard"
 import { StackedBarChart } from "@/components/charts/StackedBarChart"
-import { DataTable } from "@/components/chat/DataTable"
 import { fmtCurrency, fmtCount } from "@/components/charts/format"
 import type { AttributionChannelData } from "@/lib/dashboard/queries/attribution"
+import type { DashboardSearchParams } from "@/lib/dashboard/date-ranges"
 
 interface Props {
   data: AttributionChannelData
+  searchParams?: DashboardSearchParams
 }
 
 function n(v: unknown): number {
   return Number(v ?? 0)
-}
-
-function fmtRoas(v: unknown): string {
-  const x = n(v)
-  return x > 0 ? `${x.toFixed(2)}x` : "—"
 }
 
 function fmtMoney(v: unknown): string {
@@ -22,107 +19,298 @@ function fmtMoney(v: unknown): string {
   return x !== 0 ? fmtCurrency(x) : "—"
 }
 
-function pivotChannelTrend(rows: Record<string, unknown>[]): Record<string, unknown>[] {
-  const dateKey = "order_attribution.order_date"
-  const platformKey = "order_attribution.lt_platform"
-  const measureKey = "order_attribution.attributed_net_revenue_ex_gst"
-
-  const map = new Map<string, Record<string, unknown>>()
-  for (const row of rows) {
-    const date = String(row[dateKey] ?? "").slice(0, 10)
-    if (!date) continue
-    const platform = String(row[platformKey] ?? "other").toLowerCase()
-    const value = n(row[measureKey])
-    if (!map.has(date)) map.set(date, { order_date: date })
-    const entry = map.get(date)!
-    entry[platform] = n(entry[platform]) + value
+function buildChannelUrl(searchParams: DashboardSearchParams | undefined, channel: string): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams ?? {})) {
+    if (key === "view" || key === "channel") continue
+    if (Array.isArray(value)) value.forEach((v) => params.append(key, v))
+    else if (value !== undefined) params.set(key, value)
   }
-  return [...map.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  params.set("view", "campaign")
+  params.set("channel", channel)
+  return `/attribution?${params.toString()}`
 }
 
-export function AttributionChannelView({ data }: Props) {
-  const { channelTotals, channelTrend } = data
+interface ChannelRow {
+  platform: string
+  href: string | null
+  totalOrders: number
+  activeOrders: number
+  codOrders: number
+  revenue: number
+  spend: number
+  roas: number
+  netProfit: number
+}
 
-  const meta = channelTotals.find((r) => r["channel_pnl.platform"] === "meta") ?? {}
-  const google = channelTotals.find((r) => r["channel_pnl.platform"] === "google") ?? {}
-  const organic = channelTotals.find((r) => r["channel_pnl.platform"] === "organic") ?? {}
+function ChannelSummaryTable({
+  rows,
+  totalOrders,
+  totalRev,
+  totalSpend,
+}: {
+  rows: ChannelRow[]
+  totalOrders: number
+  totalRev: number
+  totalSpend: number
+}) {
+  const thCls =
+    "border-b border-slate-800 dark:border-night-800 bg-slate-900 dark:bg-night-875 px-3 py-2 text-left text-slate-400 dark:text-night-400 font-medium whitespace-nowrap text-xs"
+  const tdCls = "px-3 py-2 text-slate-300 dark:text-night-200 whitespace-nowrap text-xs"
+  const trCls =
+    "border-b border-slate-800/50 dark:border-night-800/50 hover:bg-slate-800/30 dark:hover:bg-night-850/40"
 
-  const metaSpend = n(meta["channel_pnl.meta_ad_spend"])
-  const googleSpend = n(google["channel_pnl.google_ad_spend"])
+  return (
+    <div className="overflow-x-auto rounded-lg border border-slate-800 dark:border-night-800">
+      <table className="text-xs w-full border-collapse">
+        <thead>
+          <tr>
+            <th className={thCls}>Platform</th>
+            <th className={thCls}>Total Orders</th>
+            <th className={thCls}>Active (paid)</th>
+            <th className={thCls}>COD Pending</th>
+            <th className={thCls}>Revenue (Active, Ex-GST)</th>
+            <th className={thCls}>Spend</th>
+            <th className={thCls}>ROAS</th>
+            <th className={thCls}>Net Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.platform} className={trCls}>
+              <td className={tdCls}>
+                {row.href ? (
+                  <Link
+                    href={row.href}
+                    className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
+                  >
+                    {row.platform} →
+                  </Link>
+                ) : (
+                  <span className="text-slate-400">{row.platform}</span>
+                )}
+              </td>
+              <td className={tdCls}>{row.totalOrders > 0 ? fmtCount(row.totalOrders) : "—"}</td>
+              <td className={tdCls}>{row.activeOrders > 0 ? fmtCount(row.activeOrders) : "—"}</td>
+              <td className={tdCls}>
+                {row.codOrders > 0 ? (
+                  <span className="text-amber-400">{fmtCount(row.codOrders)}</span>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className={tdCls}>{fmtMoney(row.revenue)}</td>
+              <td className={tdCls}>{row.spend > 0 ? fmtMoney(row.spend) : "—"}</td>
+              <td className={tdCls}>
+                {row.roas > 0 ? `${row.roas.toFixed(2)}x` : "—"}
+              </td>
+              <td className={tdCls}>{row.netProfit !== 0 ? fmtMoney(row.netProfit) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-slate-700 dark:border-night-700">
+            <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">Total</td>
+            <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">
+              {fmtCount(totalOrders)}
+            </td>
+            <td className="px-3 py-2 text-xs text-slate-500 dark:text-night-500" colSpan={2}>—</td>
+            <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">
+              {fmtMoney(totalRev)}
+            </td>
+            <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">
+              {totalSpend > 0 ? fmtMoney(totalSpend) : "—"}
+            </td>
+            <td className="px-3 py-2 text-xs text-slate-500 dark:text-night-500" colSpan={2}>—</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div className="px-3 py-1 text-xs text-slate-600 dark:text-night-600">
+        Total Orders (footer) = all orders created in period from fct_orders · Attribution rows from fct_order_attribution · "COD / Unattributed" = gap between fct_orders and attributed rows (payment_pending / cancelled / unresolved UTM)
+      </div>
+    </div>
+  )
+}
+
+export function AttributionChannelView({ data, searchParams }: Props) {
+  const { channelPnl, direct } = data
+  const { totalOrders, metaSpend, googleSpend, platforms, trend } = direct
+
+  // Net profit per channel from Cube channel_pnl (requires COGS allocation)
+  const pnlMeta = channelPnl.find((r) => r["channel_pnl.platform"] === "meta") ?? {}
+  const pnlGoogle = channelPnl.find((r) => r["channel_pnl.platform"] === "google") ?? {}
+  const pnlOrganic = channelPnl.find((r) => r["channel_pnl.platform"] === "organic") ?? {}
+
   const totalSpend = metaSpend + googleSpend
 
-  const metaRev = n(meta["channel_pnl.meta_attributed_revenue_ex_gst"])
-  const googleRev = n(google["channel_pnl.google_attributed_revenue_ex_gst"])
-  const organicRev = n(organic["channel_pnl.organic_attributed_revenue_ex_gst"])
-  const totalRev = metaRev + googleRev + organicRev
+  // Platform lookup from direct ClickHouse
+  const byPlatform = new Map(platforms.map((p) => [p.platform, p]))
+  const m = byPlatform.get("meta")
+  const g = byPlatform.get("google")
+  const org = byPlatform.get("organic")
 
-  const blendedRoas = totalSpend > 0 ? totalRev / totalSpend : 0
+  // Group all non-standard platforms into "Other"
+  const knownPlatforms = new Set(["meta", "google", "organic"])
+  let otherTotal = 0, otherActive = 0, otherCod = 0, otherRev = 0
+  for (const p of platforms) {
+    if (!knownPlatforms.has(p.platform)) {
+      otherTotal += p.total_orders
+      otherActive += p.active_orders
+      otherCod += p.cod_orders
+      otherRev += p.active_revenue
+    }
+  }
 
-  const metaOrders = n(meta["channel_pnl.meta_attributed_orders"])
-  const googleOrders = n(google["channel_pnl.google_attributed_orders"])
-  const organicOrders = n(organic["channel_pnl.organic_attributed_orders"])
-  const totalOrders = metaOrders + googleOrders + organicOrders
+  const totalActiveRev =
+    (m?.active_revenue ?? 0) +
+    (g?.active_revenue ?? 0) +
+    (org?.active_revenue ?? 0) +
+    otherRev
 
-  const pivotedTrend = pivotChannelTrend(channelTrend)
+  const metaRoas = metaSpend > 0 && m ? m.active_revenue / metaSpend : 0
+  const googleRoas = googleSpend > 0 && g ? g.active_revenue / googleSpend : 0
+  const blendedRoas = totalSpend > 0 ? totalActiveRev / totalSpend : 0
 
-  const summaryRows = [
+  // Pivot trend for chart — orders created per day per channel
+  const trendMap = new Map<string, Record<string, unknown>>()
+  for (const row of trend) {
+    if (!trendMap.has(row.day)) trendMap.set(row.day, { order_date: row.day })
+    const entry = trendMap.get(row.day)!
+    entry[row.platform] = (Number(entry[row.platform] ?? 0)) + row.orders
+  }
+  const pivotedTrend = [...trendMap.values()].sort((a, b) =>
+    String(a.order_date).localeCompare(String(b.order_date))
+  )
+
+  const channelRows: ChannelRow[] = [
     {
-      Platform: "Meta",
-      Orders: metaOrders > 0 ? fmtCount(metaOrders) : "—",
-      "Revenue (ex-GST)": fmtMoney(metaRev),
-      Spend: fmtMoney(metaSpend),
-      ROAS: fmtRoas(meta["channel_pnl.meta_roas"]),
-      "Net Profit": fmtMoney(n(meta["channel_pnl.meta_net_profit"])),
+      platform: "Meta",
+      href: buildChannelUrl(searchParams, "meta"),
+      totalOrders: m?.total_orders ?? 0,
+      activeOrders: m?.active_orders ?? 0,
+      codOrders: m?.cod_orders ?? 0,
+      revenue: m?.active_revenue ?? 0,
+      spend: metaSpend,
+      roas: metaRoas,
+      netProfit: n(pnlMeta["channel_pnl.meta_net_profit"]),
     },
     {
-      Platform: "Google",
-      Orders: googleOrders > 0 ? fmtCount(googleOrders) : "—",
-      "Revenue (ex-GST)": fmtMoney(googleRev),
-      Spend: fmtMoney(googleSpend),
-      ROAS: fmtRoas(google["channel_pnl.google_roas"]),
-      "Net Profit": fmtMoney(n(google["channel_pnl.google_net_profit"])),
+      platform: "Google",
+      href: buildChannelUrl(searchParams, "google"),
+      totalOrders: g?.total_orders ?? 0,
+      activeOrders: g?.active_orders ?? 0,
+      codOrders: g?.cod_orders ?? 0,
+      revenue: g?.active_revenue ?? 0,
+      spend: googleSpend,
+      roas: googleRoas,
+      netProfit: n(pnlGoogle["channel_pnl.google_net_profit"]),
     },
     {
-      Platform: "Organic",
-      Orders: organicOrders > 0 ? fmtCount(organicOrders) : "—",
-      "Revenue (ex-GST)": fmtMoney(organicRev),
-      Spend: "—",
-      ROAS: "—",
-      "Net Profit": fmtMoney(n(organic["channel_pnl.organic_net_profit"])),
+      platform: "Organic",
+      href: buildChannelUrl(searchParams, "organic"),
+      totalOrders: org?.total_orders ?? 0,
+      activeOrders: org?.active_orders ?? 0,
+      codOrders: org?.cod_orders ?? 0,
+      revenue: org?.active_revenue ?? 0,
+      spend: 0,
+      roas: 0,
+      netProfit: n(pnlOrganic["channel_pnl.organic_net_profit"]),
     },
+    ...(otherTotal > 0
+      ? [
+          {
+            platform: "Other",
+            href: null,
+            totalOrders: otherTotal,
+            activeOrders: otherActive,
+            codOrders: otherCod,
+            revenue: otherRev,
+            spend: 0,
+            roas: 0,
+            netProfit: 0,
+          },
+        ]
+      : []),
   ]
 
+  // Reconciliation: orders in fct_orders but not in fct_order_attribution
+  // (COD/payment_pending + cancelled/voided if not stored in fct_order_attribution)
+  const attributedTotal = channelRows.reduce((s, r) => s + r.totalOrders, 0)
+  const unattributedGap = totalOrders - attributedTotal
+  if (unattributedGap > 0) {
+    channelRows.push({
+      platform: "COD / Unattributed",
+      href: null,
+      totalOrders: unattributedGap,
+      activeOrders: 0,
+      codOrders: unattributedGap,
+      revenue: 0,
+      spend: 0,
+      roas: 0,
+      netProfit: 0,
+    })
+  }
+
   const kpiCards = [
-    { label: "Total Attributed Orders", value: fmtCount(totalOrders) },
-    { label: "Total Attributed Revenue", value: fmtMoney(totalRev) },
-    { label: "Meta Spend", value: fmtMoney(metaSpend) },
-    { label: "Google Spend", value: fmtMoney(googleSpend) },
-    { label: "Blended ROAS", value: blendedRoas > 0 ? `${blendedRoas.toFixed(2)}x` : "—" },
+    {
+      label: "Total Orders Created",
+      value: fmtCount(totalOrders),
+      sub: "all Shopify orders in period",
+    },
+    {
+      label: "Active (Paid) Orders",
+      value: fmtCount((m?.active_orders ?? 0) + (g?.active_orders ?? 0) + (org?.active_orders ?? 0) + otherActive),
+      sub: "delivered / paid",
+    },
+    {
+      label: "COD Pending",
+      value: fmtCount((m?.cod_orders ?? 0) + (g?.cod_orders ?? 0) + (org?.cod_orders ?? 0) + otherCod),
+      sub: "payment_pending — undelivered",
+    },
+    {
+      label: "Active Revenue",
+      value: fmtMoney(totalActiveRev),
+      sub: "ex-GST, paid orders only",
+    },
+    { label: "Meta Spend", value: fmtMoney(metaSpend), sub: null },
+    { label: "Google Spend", value: fmtMoney(googleSpend), sub: null },
+    {
+      label: "Blended ROAS",
+      value: blendedRoas > 0 ? `${blendedRoas.toFixed(2)}x` : "—",
+      sub: "active rev / total spend",
+    },
   ]
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400">
-        Attribution model: last-touch. &quot;Other&quot; platform = unresolvable UTM (direct / referral / unknown). No Amazon Ads data available.
+<div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400">
+        Attribution model: last-touch · Orders/revenue from <strong>gold.fct_order_attribution</strong> direct · Spend from <strong>gold.fct_daily_pnl</strong> direct · Net Profit from channel_pnl (Cube) · &quot;Other&quot; = unresolvable UTM (direct / referral / unknown)
       </div>
 
       <div className="flex flex-wrap gap-3">
         {kpiCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-lg border border-stone-200 dark:border-night-800 bg-stone-50 dark:bg-night-850 px-4 py-3 flex flex-col gap-1 min-w-[140px]"
+            className="rounded-lg border border-stone-200 dark:border-night-800 bg-stone-50 dark:bg-night-850 px-4 py-3 flex flex-col gap-0.5 min-w-[140px]"
           >
-            <span className="text-xs text-stone-500 dark:text-night-500 uppercase tracking-wide">{card.label}</span>
-            <span className="text-lg font-semibold text-stone-900 dark:text-night-50">{card.value}</span>
+            <span className="text-xs text-stone-500 dark:text-night-500 uppercase tracking-wide">
+              {card.label}
+            </span>
+            <span className="text-lg font-semibold text-stone-900 dark:text-night-50">
+              {card.value}
+            </span>
+            {card.sub && (
+              <span className="text-[10px] text-stone-400 dark:text-night-600">{card.sub}</span>
+            )}
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartCard
-          title="Attributed revenue by channel"
-          subtitle="Last-touch, ex-GST, per day"
-          cube="order_attribution"
+          title="Orders created by channel"
+          subtitle="All orders created per day, by last-touch channel · direct ClickHouse"
+          cube="fct_order_attribution"
           className="xl:col-span-2"
         >
           <StackedBarChart
@@ -138,11 +326,16 @@ export function AttributionChannelView({ data }: Props) {
 
         <ChartCard
           title="Channel summary"
-          subtitle="Last-touch attribution + spend from channel P&L"
-          cube="channel_pnl"
+          subtitle="Click a channel to drill down · fct_order_attribution + fct_daily_pnl direct · Net Profit from channel_pnl"
+          cube="fct_order_attribution"
           className="xl:col-span-2"
         >
-          <DataTable rows={summaryRows} />
+          <ChannelSummaryTable
+            rows={channelRows}
+            totalOrders={totalOrders}
+            totalRev={totalActiveRev}
+            totalSpend={totalSpend}
+          />
         </ChartCard>
       </div>
     </div>

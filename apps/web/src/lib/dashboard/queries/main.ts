@@ -79,17 +79,30 @@ const CHANNEL_DAILY_MEASURES = [
 
 
 
-const SHOPIFY_DAILY_MEASURES = [
+// Daily executive-overview Shopify panel. Split into TWO datasets so the
+// "Orders & AOV trend" and "Return rate trend" charts don't contaminate each
+// other with extra lines:
+//   - ORDERS_AOV: placement-universe orders + AOV + gross revenue.
+//   - RETURN_RATE: returned_orders + net_orders + return_rate (the documented
+//     return rate denominator is `returned_orders / net_orders` because net_orders
+//     is the "orders eligible for return" universe).
+const SHOPIFY_ORDERS_AOV_MEASURES = [
 
-  "shopify_orders.net_orders",
+  "shopify_orders.orders",
 
   "shopify_orders.aov",
 
   "shopify_orders.gross_revenue",
 
+] as const
+
+const SHOPIFY_RETURN_RATE_MEASURES = [
+
   "shopify_orders.return_rate",
 
   "shopify_orders.returned_orders",
+
+  "shopify_orders.net_orders",
 
 ] as const
 
@@ -115,7 +128,9 @@ export async function fetchMainDashboardData(
 
       channelDaily,
 
-      shopifyDaily,
+      ordersAovDaily,
+
+      returnRateDaily,
 
       pnlWaterfall,
 
@@ -187,7 +202,7 @@ export async function fetchMainDashboardData(
 
         q("shopify_orders", brand, {
 
-          measures: [...SHOPIFY_DAILY_MEASURES],
+          measures: [...SHOPIFY_ORDERS_AOV_MEASURES],
 
           timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
 
@@ -195,7 +210,23 @@ export async function fetchMainDashboardData(
 
         }),
 
-        "shopifyDaily"
+        "ordersAovDaily"
+
+      ),
+
+      safeCubeQuery(
+
+        q("shopify_orders", brand, {
+
+          measures: [...SHOPIFY_RETURN_RATE_MEASURES],
+
+          timeDimensions: [td("shopify_orders.created_at_ist", range, "day")],
+
+          order: { "shopify_orders.created_at_ist": "asc" },
+
+        }),
+
+        "returnRateDaily"
 
       ),
 
@@ -251,13 +282,13 @@ export async function fetchMainDashboardData(
 
       channelNetProfitTrend: reconcileChannelNetProfitRows(channelDaily, dailyPnl),
 
-      ordersAovTrend: shopifyDaily,
+      ordersAovTrend: ordersAovDaily,
 
       roasByChannel: channelDaily,
 
       grossMarginTrend: dailyPnl,
 
-      returnRateTrend: shopifyDaily,
+      returnRateTrend: returnRateDaily,
 
       pnlWaterfall,
 

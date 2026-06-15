@@ -191,7 +191,11 @@ export default async function DashboardPage({
 
 
 
-        <ChartCard title="Orders & AOV trend" subtitle="net_orders (left) + AOV (right)" cube="shopify_orders">
+        <ChartCard
+          title="Orders & AOV trend"
+          subtitle="orders placed daily (left) + AOV (right) · placement universe matches the Orders KPI tile"
+          cube="shopify_orders"
+        >
 
           <TrendChart rows={data?.ordersAovTrend ?? []} />
 

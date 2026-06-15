@@ -56,10 +56,10 @@ export default async function AttributionPage({
   try {
     if (view === "channel") {
       const data = await fetchAttributionChannel(range, brand)
-      content = <AttributionChannelView data={data} />
+      content = <AttributionChannelView data={data} searchParams={searchParams} />
     } else if (view === "campaign") {
       const data = await fetchAttributionCampaigns(range, brand, channel)
-      content = <AttributionCampaignView data={data} />
+      content = <AttributionCampaignView data={data} channel={channel} />
     } else if (view === "ad") {
       const data = await fetchAttributionAds(range, brand)
       content = <AttributionAdView data={data} />

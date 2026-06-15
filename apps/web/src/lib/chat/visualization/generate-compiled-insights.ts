@@ -47,7 +47,14 @@ export function generateCompiledInsights(merged: MergedToolData): InsightSection
   const revenueKey = findKey(summary, [/sales_ex|gross_revenue|revenue/i])
   const spendKey = findKey(summary, [/ad_spend|total_ad_spend/i])
   const profitKey = findKey(summary, [/net_profit/i])
-  const ordersKey = findKey(summary, [/total_orders/i])
+  // Prefer orders_created (placement universe — what CAC is divided by) over
+  // total_orders / net_orders / active_orders. Falls back when the payload
+  // doesn't carry the placement measure.
+  const ordersKey =
+    findKey(summary, [/\.orders_created$|orders_created/i]) ??
+    findKey(summary, [/\.placed_orders$|placed_orders/i]) ??
+    findKey(summary, [/\.orders$|^orders$/i]) ??
+    findKey(summary, [/total_orders|net_orders|active_orders/i])
 
   const totalRevenue = num(summary, revenueKey)
   const totalSpend = num(summary, spendKey)
@@ -65,7 +72,18 @@ export function generateCompiledInsights(merged: MergedToolData): InsightSection
       `net profit **${formatInr(totalProfit, { signed: true })}**`
     )
   }
-  if (totalOrders) headline.push(`**${totalOrders.toLocaleString("en-IN")}** orders`)
+  if (totalOrders) {
+    const k = (ordersKey ?? "").toLowerCase()
+    const noun =
+      /orders_created|placed_orders|\.orders$|^orders$/.test(k)
+        ? "orders placed"
+        : /active/.test(k)
+          ? "active orders"
+          : /net/.test(k)
+            ? "net orders (excl. returns)"
+            : "orders (active + cancelled)"
+    headline.push(`**${totalOrders.toLocaleString("en-IN")}** ${noun}`)
+  }
   if (headline.length) {
     sections.push({
       title: "Key numbers",
@@ -110,7 +128,7 @@ export function generateCompiledInsights(merged: MergedToolData): InsightSection
   }
 
   const cacBullets: string[] = []
-  if (avgCac > 0) cacBullets.push(`Blended **CAC ≈ ${formatInr(avgCac)}** (ad spend ÷ orders).`)
+  if (avgCac > 0) cacBullets.push(`Blended **CAC ≈ ${formatInr(avgCac)}** (ad spend ÷ orders placed — every placement incl. COD pending / cancelled / voided).`)
   if (avgLtv > 0) {
     cacBullets.push(
       `**Est. LTV ≈ ${formatInr(avgLtv)}** — proxy from AOV × margin × 1.4; not cohort-based repeat revenue.`
@@ -205,7 +223,9 @@ export function pickTableColumns(rows: CubeRow[]): string[] {
     if (/gross_profit/i.test(k)) return 2
     if (/ad_spend/i.test(k)) return 3
     if (/net_profit/i.test(k)) return 4
-    if (/total_orders|orders/i.test(k)) return 5
+    // Placement orders rank just above total/net/active so the "right" denominator surfaces first.
+    if (/orders_created|placed_orders/i.test(k)) return 5
+    if (/total_orders|net_orders|active_orders|orders/i.test(k)) return 5.5
     if (/derived\.(cac|ltv)/i.test(k)) return 6
     if (/revenue/i.test(k)) return 8
     return 7

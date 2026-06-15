@@ -29,6 +29,12 @@ _EMPTY_METRICS: dict[str, Any] = {
     "today_orders": None,
 }
 
+# Orders measure: prefer `orders_created` (full Shopify "Created at" placement
+# universe) as the denominator for entity-level CAC and "orders" counts. The
+# orchestrator's downstream signals (high_cac, low_revenue) need the same
+# placement universe that the dashboard uses. `total_orders` (active + cancelled)
+# is kept so agents that want the financially-confirmed slice can read it
+# explicitly.
 _MEASURES = [
     "daily_pnl.total_ad_spend",
     "daily_pnl.gross_revenue",
@@ -36,6 +42,7 @@ _MEASURES = [
     "daily_pnl.gross_profit",
     "daily_pnl.total_sales_ex_gst",
     "daily_pnl.total_cogs",
+    "daily_pnl.orders_created",
     "daily_pnl.total_orders",
 ]
 
@@ -133,7 +140,9 @@ async def get_entity_metrics(entity_id: str, entity_type: str = "campaign") -> d
                     metrics["today_spend"] = _sum_rows(rows, "daily_pnl.total_ad_spend")
                     metrics["today_revenue"] = _sum_rows(rows, "daily_pnl.gross_revenue")
                     metrics["today_net_profit"] = _sum_rows(rows, "daily_pnl.net_profit")
-                    metrics["today_orders"] = _sum_rows(rows, "daily_pnl.total_orders")
+                    metrics["today_orders"] = _sum_rows(
+                        rows, "daily_pnl.orders_created"
+                    ) or _sum_rows(rows, "daily_pnl.total_orders")
             except Exception as exc:
                 logger.warning("cube_today_fetch_failed", error=str(exc))
 
@@ -158,7 +167,9 @@ async def get_entity_metrics(entity_id: str, entity_type: str = "campaign") -> d
                     metrics[f"spend_{suffix}"] = _sum_rows(rows, "daily_pnl.total_ad_spend")
                     metrics[f"revenue_{suffix}"] = _sum_rows(rows, "daily_pnl.gross_revenue")
                     metrics[f"net_profit_{suffix}"] = _sum_rows(rows, "daily_pnl.net_profit")
-                    metrics[f"orders_{suffix}"] = _sum_rows(rows, "daily_pnl.total_orders")
+                    metrics[f"orders_{suffix}"] = _sum_rows(
+                        rows, "daily_pnl.orders_created"
+                    ) or _sum_rows(rows, "daily_pnl.total_orders")
                 except Exception as exc:
                     logger.warning("cube_period_fetch_failed", suffix=suffix, error=str(exc))
                     for key in ("spend", "revenue", "net_profit", "orders"):

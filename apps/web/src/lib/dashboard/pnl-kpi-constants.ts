@@ -1,4 +1,13 @@
-/** Canonical KPI measures — chart view daily_pnl (gold.fct_daily_pnl). */
+/** Canonical KPI measures — chart view daily_pnl (gold.fct_daily_pnl).
+ *
+ * Orders measure note: `daily_pnl.orders_created` = every Shopify "Created at"
+ * placement (active + payment_pending + cancelled + refunded + voided + RTO
+ * draft). This is the universe the brand actually processed and the correct
+ * denominator for blended CAC, AOV-from-placements, and the headline "Orders"
+ * KPI. Do NOT swap back to `total_orders` (active + cancelled only) — that
+ * silently drops payment_pending (COD), refunded and voided rows, which for
+ * COD-heavy brands can hide ~40-50% of demand.
+ */
 
 export const PNL_KPI_MEASURES = [
 
@@ -12,7 +21,7 @@ export const PNL_KPI_MEASURES = [
 
   "daily_pnl.total_ad_spend",
 
-  "daily_pnl.total_orders",
+  "daily_pnl.orders_created",
 
   "daily_pnl.gross_margin_pct",
 
@@ -32,7 +41,7 @@ export const PNL_KPI_LABELS: Record<(typeof PNL_KPI_MEASURES)[number], string> =
 
   "daily_pnl.total_ad_spend": "Ad spend",
 
-  "daily_pnl.total_orders": "Orders",
+  "daily_pnl.orders_created": "Orders (placed)",
 
   "daily_pnl.gross_margin_pct": "Gross margin %",
 

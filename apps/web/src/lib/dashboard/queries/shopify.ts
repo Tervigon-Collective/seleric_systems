@@ -51,6 +51,10 @@ export async function fetchShopifyDashboardData(
           measures: [
             "shopify_orders.gross_revenue",
             "shopify_orders.net_sales_ex_gst",
+            // `orders` = every Shopify "Created at" placement (placement universe);
+            // `net_orders` excludes RETURNED + IN_PROGRESS. We want the placement
+            // bar on the daily chart so it matches the executive-overview Orders KPI.
+            "shopify_orders.orders",
             "shopify_orders.net_orders",
             "shopify_orders.aov",
           ],
@@ -99,7 +103,9 @@ export async function fetchShopifyDashboardData(
         brand,
         {
           dimensions: ["shopify_orders.ship_country", "shopify_orders.ship_province"],
-          measures: ["shopify_orders.gross_revenue", "shopify_orders.net_orders", "shopify_orders.aov"],
+          // Use placement `orders` (not `net_orders`) so per-geo counts match
+          // the overall Orders Placed KPI.
+          measures: ["shopify_orders.gross_revenue", "shopify_orders.orders", "shopify_orders.aov"],
           timeDimensions: [td("shopify_orders.created_at_ist", range)],
           order: { "shopify_orders.gross_revenue": "desc" },
           limit: 50,
@@ -115,7 +121,9 @@ export async function fetchShopifyDashboardData(
             "shopify_orders.utm_medium",
             "shopify_orders.utm_campaign",
           ],
-          measures: ["shopify_orders.gross_revenue", "shopify_orders.net_orders", "shopify_orders.aov"],
+          // Use placement `orders` so per-UTM counts reflect every placement,
+          // not just non-returned ones.
+          measures: ["shopify_orders.gross_revenue", "shopify_orders.orders", "shopify_orders.aov"],
           timeDimensions: [td("shopify_orders.created_at_ist", range)],
           order: { "shopify_orders.gross_revenue": "desc" },
           limit: 30,

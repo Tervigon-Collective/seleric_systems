@@ -69,7 +69,14 @@ export function buildKpiTiles(summary: PeriodSummary, seriesRows: CubeRow[]) {
   const spend = pick(/ad_spend|spend/i)
   const grossProfit = pick(/gross_profit/i)
   const netProfit = pick(/net_profit/i)
-  const orders = pick(/total_orders|orders/i)
+  // Prefer orders_created (full placement universe). Fall back to total/net/active
+  // only when the payload is missing the placement measure. Tile is labelled
+  // accordingly below.
+  const orders =
+    pick(/\.orders_created$|orders_created/i) ??
+    pick(/\.placed_orders$|placed_orders/i) ??
+    pick(/\.orders$|^orders$/i) ??
+    pick(/total_orders|net_orders|active_orders/i)
   const cac = summary["derived.cac"] ?? pick(/cac/i)?.val
   const ltv = summary["derived.ltv_estimate"]
   const ltvCac = summary["derived.ltv_cac"]
@@ -104,8 +111,19 @@ export function buildKpiTiles(summary: PeriodSummary, seriesRows: CubeRow[]) {
     })
   }
   if (orders) {
+    // Label hints which universe the count covers so a viewer doesn't conflate
+    // placement counts with the financially-confirmed slice.
+    const k = orders.key.toLowerCase()
+    const ordersLabel =
+      /orders_created|placed_orders|\.orders$|^orders$/.test(k)
+        ? "Orders placed"
+        : /active/.test(k)
+          ? "Active orders"
+          : /net/.test(k)
+            ? "Net orders (excl. returns)"
+            : "Orders (active + cancelled)"
     tiles.push({
-      label: "Total orders",
+      label: ordersLabel,
       value: formatCount(orders.val),
       className: "text-stone-900 dark:text-night-50",
     })
@@ -124,7 +142,7 @@ export function buildKpiTiles(summary: PeriodSummary, seriesRows: CubeRow[]) {
 
   if (cac != null) {
     tiles.push({
-      label: "Avg CAC (spend÷orders)",
+      label: "Avg CAC (spend ÷ orders placed)",
       value: formatInr(cac),
       className: "text-insight-cost",
     })

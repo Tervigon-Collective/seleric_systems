@@ -3,6 +3,11 @@ import "server-only"
 import { cubeLoad, cubeMeta, type CubeLoadQuery } from "./cube-rest"
 import { serverLog } from "./server-log"
 
+// `orders_created` is the full Shopify placement universe (active + COD pending +
+// cancelled + refunded + voided + RTO draft). It is the correct denominator for
+// blended CAC because ad spend is paid for every placement, not just the active
+// + cancelled slice that `total_orders` represents. Keeping `total_orders`
+// alongside for downstream tooling that wants the financially-confirmed bucket.
 const PNL_MEASURES = [
   "daily_pnl.gross_revenue",
   "daily_pnl.total_sales_ex_gst",
@@ -10,7 +15,9 @@ const PNL_MEASURES = [
   "daily_pnl.gross_profit",
   "daily_pnl.total_ad_spend",
   "daily_pnl.net_profit",
+  "daily_pnl.orders_created",
   "daily_pnl.total_orders",
+  "daily_pnl.active_orders",
 ]
 
 const CHANNEL_MEASURES = [
