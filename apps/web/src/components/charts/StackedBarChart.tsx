@@ -15,6 +15,7 @@ import {
   CHART_COLORS,
   detectDateKey,
   detectNumericKeys,
+  fmtCount,
   fmtCurrency,
   prettyLabel,
   shortDate,
@@ -29,6 +30,8 @@ interface Props {
   series?: { label: string; measure: string }[]
   /** Category dimension when rows are not time-series (e.g. product_title) */
   categoryKey?: string
+  /** "currency" (default) formats values as ₹; "count" formats as plain numbers */
+  valueType?: "currency" | "count"
 }
 
 function detectCategoryKey(rows: Record<string, unknown>[]): string | null {
@@ -37,7 +40,7 @@ function detectCategoryKey(rows: Record<string, unknown>[]): string | null {
   return keys.find((k) => /product_title|campaign_name|adset_name|sku|title|name|status|source|hourly/i.test(k)) ?? null
 }
 
-export function StackedBarChart({ rows, series, categoryKey }: Props) {
+export function StackedBarChart({ rows, series, categoryKey, valueType = "currency" }: Props) {
   if (!rows?.length) return <p className="text-sm text-stone-500 dark:text-night-500">No data for this period.</p>
 
   const dateKey = detectDateKey(rows)
@@ -80,7 +83,7 @@ export function StackedBarChart({ rows, series, categoryKey }: Props) {
         />
         <YAxis
           domain={["auto", "auto"]}
-          tickFormatter={fmtCurrency}
+          tickFormatter={valueType === "count" ? fmtCount : fmtCurrency}
           tick={{ fill: ct.tick, fontSize: 11 }}
           tickLine={false}
           axisLine={false}
@@ -88,7 +91,7 @@ export function StackedBarChart({ rows, series, categoryKey }: Props) {
         />
         <ReferenceLine y={0} stroke={ct.grid} strokeWidth={1.5} strokeDasharray="4 2" />
         <Tooltip
-          formatter={(v: number) => fmtCurrency(v)}
+          formatter={(v: number) => (valueType === "count" ? fmtCount(v) : fmtCurrency(v))}
           contentStyle={ct.tooltip}
         />
         <Legend wrapperStyle={ct.legend} />

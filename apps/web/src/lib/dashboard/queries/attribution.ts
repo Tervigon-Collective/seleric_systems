@@ -7,32 +7,31 @@ import { q, td } from "../query-helpers"
 import { type CubeRow } from "@/lib/chat/cube-rows"
 import {
   fetchAttributionDirect,
+  fetchCampaignAdRows,
+  fetchCampaignAdSkuRows,
+  fetchCampaignRollupOrders,
   type AttributionDirectData,
+  type CampaignAdRow,
+  type CampaignAdSkuRow,
+  type CampaignRollupOrders,
 } from "./attribution-clickhouse"
 
 export type AttributionChannel = "all" | "meta" | "google" | "organic"
 
+export type { CampaignAdRow, CampaignAdSkuRow }
+
 export interface AttributionChannelData {
-  channelPnl: CubeRow[]         // channel_pnl (Cube) — net_profit per channel only
-  direct: AttributionDirectData // direct ClickHouse — orders, revenue, spend, trend
+  channelPnl: CubeRow[]
+  direct: AttributionDirectData
 }
 
 export interface AttributionCampaignData {
-  metaAttrib: CubeRow[]
-  metaDelivery: CubeRow[]
-  googleDelivery: CubeRow[]
-  orderTrace: CubeRow[]
-  adRows: CubeRow[]     // ad-level attribution (order_attribution with ad dims, filtered to meta)
-  adDelivery: CubeRow[] // meta_ad_performance for ad delivery metrics
-}
-
-export interface AttributionAdData {
-  warehouseAds: CubeRow[]
-  adDelivery: CubeRow[]
-}
-
-export interface AttributionSkuData {
-  skuRows: CubeRow[]
+  adRows: CampaignAdRow[]            // order counts per campaign×adset×ad (no SKU double-count)
+  skuRows: CampaignAdSkuRow[]        // gross revenue+units per ad×sku
+  rollupOrders: CampaignRollupOrders // distinct orders at campaign + adset level (correct rollups)
+  metaDelivery: CubeRow[]            // Meta campaign delivery (spend, impressions, clicks)
+  adDelivery: CubeRow[]              // Meta ad delivery (spend, impressions, clicks, video_views_3s) per ad+adset
+  googleDelivery: CubeRow[]          // Google campaign performance
 }
 
 export interface AttributionOrdersData {
@@ -75,197 +74,73 @@ export async function fetchAttributionCampaigns(
   brand: DashboardBrandFilter,
   channel: AttributionChannel
 ): Promise<AttributionCampaignData> {
-  return runDashboardCubeFetch(async () => {
-    const [metaAttrib, metaDelivery, googleDelivery, orderTrace, adRows, adDelivery] = await Promise.all([
-      safeCubeQuery(
-        q("dw_meta_ads_attribution", brand, {
-          dimensions: ["dw_meta_ads_attribution.campaign_name"],
-          measures: [
-            "dw_meta_ads_attribution.attributed_revenue",
-            "dw_meta_ads_attribution.attributed_orders",
-            "dw_meta_ads_attribution.ad_spend",
-            "dw_meta_ads_attribution.roas",
-          ],
-          timeDimensions: [td("dw_meta_ads_attribution.date_start", range)],
-          order: { "dw_meta_ads_attribution.attributed_revenue": "desc" },
-          limit: 50,
-        }),
-        "metaAttrib"
-      ),
-      safeCubeQuery(
-        q("marketing_performance", brand, {
-          dimensions: ["marketing_performance.campaign_name"],
-          measures: [
-            "marketing_performance.ad_spend",
-            "marketing_performance.roas",
-            "marketing_performance.impressions",
-            "marketing_performance.clicks",
-            "marketing_performance.ctr",
-            "marketing_performance.cpc",
-            "marketing_performance.cpm",
-          ],
-          timeDimensions: [td("marketing_performance.date_start", range)],
-          order: { "marketing_performance.ad_spend": "desc" },
-          limit: 50,
-        }),
-        "metaDelivery"
-      ),
-      safeCubeQuery(
-        q("google_ad_performance", brand, {
-          dimensions: ["google_ad_performance.campaign_name"],
-          measures: [
-            "google_ad_performance.spend",
-            "google_ad_performance.impressions",
-            "google_ad_performance.clicks",
-            "google_ad_performance.conversions",
-            "google_ad_performance.conversion_value",
-            "google_ad_performance.roas",
-            "google_ad_performance.ctr",
-            "google_ad_performance.cpc",
-            "google_ad_performance.cost_per_conversion",
-          ],
-          timeDimensions: [td("google_ad_performance.report_date", range)],
-          order: { "google_ad_performance.spend": "desc" },
-          limit: 50,
-        }),
-        "googleDelivery"
-      ),
-      safeCubeQuery(
-        q("order_attribution", brand, {
-          dimensions: ["order_attribution.lt_platform", "order_attribution.lt_campaign_name"],
-          measures: [
-            "order_attribution.attributed_orders",
-            "order_attribution.placed_orders",
-            "order_attribution.attributed_net_revenue_ex_gst",
-          ],
-          timeDimensions: [td("order_attribution.order_date", range, "day")],
-          filters: platformFilter(channel),
-          order: { "order_attribution.attributed_net_revenue_ex_gst": "desc" },
-          limit: 200,
-        }),
-        "orderTrace"
-      ),
-      safeCubeQuery(
-        q("order_attribution", brand, {
-          dimensions: [
-            "order_attribution.lt_platform",
-            "order_attribution.lt_campaign_name",
-            "order_attribution.lt_adset_name",
-            "order_attribution.lt_ad_id",
-            "order_attribution.lt_ad_name",
-          ],
-          measures: [
-            "order_attribution.attributed_orders",
-            "order_attribution.attributed_net_revenue_ex_gst",
-          ],
-          timeDimensions: [td("order_attribution.order_date", range)],
-          filters: [{ member: "order_attribution.lt_platform", operator: "equals", values: ["meta"] }],
-          order: { "order_attribution.attributed_net_revenue_ex_gst": "desc" },
-          limit: 200,
-        }),
-        "adRows"
-      ),
-      safeCubeQuery(
-        q("meta_ad_performance", brand, {
-          dimensions: [
-            "meta_ad_performance.ad_id",
-            "meta_ad_performance.ad_name",
-            "meta_ad_performance.campaign_name",
-          ],
-          measures: [
-            "meta_ad_performance.spend",
-            "meta_ad_performance.impressions",
-            "meta_ad_performance.clicks",
-            "meta_ad_performance.ctr",
-            "meta_ad_performance.cpc",
-            "meta_ad_performance.hook_rate",
-          ],
-          timeDimensions: [td("meta_ad_performance.report_date", range)],
-          order: { "meta_ad_performance.spend": "desc" },
-          limit: 200,
-        }),
-        "adDelivery"
-      ),
-    ])
-    return { metaAttrib, metaDelivery, googleDelivery, orderTrace, adRows, adDelivery }
-  })
+  const [adRows, skuRows, rollupOrders, cubeData] = await Promise.all([
+    fetchCampaignAdRows(range, brand, channel),
+    fetchCampaignAdSkuRows(range, brand, channel),
+    fetchCampaignRollupOrders(range, brand, channel),
+    runDashboardCubeFetch(async () => {
+      const [metaDelivery, adDelivery, googleDelivery] = await Promise.all([
+        safeCubeQuery(
+          q("marketing_performance", brand, {
+            dimensions: ["marketing_performance.campaign_name"],
+            measures: [
+              "marketing_performance.ad_spend",
+              "marketing_performance.impressions",
+              "marketing_performance.clicks",
+            ],
+            timeDimensions: [td("marketing_performance.date_start", range)],
+            order: { "marketing_performance.ad_spend": "desc" },
+            limit: 100,
+          }),
+          "metaDelivery"
+        ),
+        safeCubeQuery(
+          q("meta_ad_performance", brand, {
+            dimensions: [
+              "meta_ad_performance.ad_id",
+              "meta_ad_performance.ad_name",
+              "meta_ad_performance.adset_name",
+              "meta_ad_performance.campaign_name",
+            ],
+            measures: [
+              "meta_ad_performance.spend",
+              "meta_ad_performance.impressions",
+              "meta_ad_performance.clicks",
+              "meta_ad_performance.video_views_3s",
+            ],
+            timeDimensions: [td("meta_ad_performance.report_date", range)],
+            order: { "meta_ad_performance.spend": "desc" },
+            limit: 1000,
+          }),
+          "adDelivery"
+        ),
+        safeCubeQuery(
+          q("google_ad_performance", brand, {
+            dimensions: ["google_ad_performance.campaign_name"],
+            measures: [
+              "google_ad_performance.spend",
+              "google_ad_performance.impressions",
+              "google_ad_performance.clicks",
+              "google_ad_performance.conversions",
+              "google_ad_performance.conversion_value",
+              "google_ad_performance.roas",
+              "google_ad_performance.ctr",
+              "google_ad_performance.cpc",
+              "google_ad_performance.cost_per_conversion",
+            ],
+            timeDimensions: [td("google_ad_performance.report_date", range)],
+            order: { "google_ad_performance.spend": "desc" },
+            limit: 50,
+          }),
+          "googleDelivery"
+        ),
+      ])
+      return { metaDelivery, adDelivery, googleDelivery }
+    }),
+  ])
+  return { adRows, skuRows, rollupOrders, ...cubeData }
 }
 
-export async function fetchAttributionAds(
-  range: DashboardDateRange,
-  brand: DashboardBrandFilter
-): Promise<AttributionAdData> {
-  return runDashboardCubeFetch(async () => {
-    const [warehouseAds, adDelivery] = await Promise.all([
-      safeCubeQuery(
-        q("order_attribution", brand, {
-          dimensions: [
-            "order_attribution.lt_platform",
-            "order_attribution.lt_campaign_name",
-            "order_attribution.lt_adset_name",
-            "order_attribution.lt_ad_id",
-            "order_attribution.lt_ad_name",
-          ],
-          measures: [
-            "order_attribution.attributed_orders",
-            "order_attribution.attributed_net_revenue_ex_gst",
-          ],
-          timeDimensions: [td("order_attribution.order_date", range)],
-          order: { "order_attribution.attributed_net_revenue_ex_gst": "desc" },
-          limit: 200,
-        }),
-        "warehouseAds"
-      ),
-      safeCubeQuery(
-        q("meta_ad_performance", brand, {
-          dimensions: [
-            "meta_ad_performance.ad_id",
-            "meta_ad_performance.ad_name",
-            "meta_ad_performance.campaign_name",
-          ],
-          measures: [
-            "meta_ad_performance.spend",
-            "meta_ad_performance.impressions",
-            "meta_ad_performance.clicks",
-            "meta_ad_performance.ctr",
-            "meta_ad_performance.cpc",
-            "meta_ad_performance.cpm",
-            "meta_ad_performance.hook_rate",
-          ],
-          timeDimensions: [td("meta_ad_performance.report_date", range)],
-          order: { "meta_ad_performance.spend": "desc" },
-          limit: 200,
-        }),
-        "adDelivery"
-      ),
-    ])
-    return { warehouseAds, adDelivery }
-  })
-}
-
-export async function fetchAttributionSkus(
-  range: DashboardDateRange,
-  brand: DashboardBrandFilter
-): Promise<AttributionSkuData> {
-  return runDashboardCubeFetch(async () => {
-    const skuRows = await safeCubeQuery(
-      q("product_performance", brand, {
-        dimensions: ["product_performance.sku", "product_performance.product_title"],
-        measures: [
-          "product_performance.net_line_revenue_ex_gst",
-          "product_performance.total_quantity",
-          "product_performance.total_cogs",
-          "product_performance.gross_profit_ex_gst",
-        ],
-        timeDimensions: [td("product_performance.created_at_ist", range)],
-        order: { "product_performance.net_line_revenue_ex_gst": "desc" },
-        limit: 100,
-      }),
-      "skuRows"
-    )
-    return { skuRows }
-  })
-}
 
 export async function fetchAttributionOrders(
   range: DashboardDateRange,

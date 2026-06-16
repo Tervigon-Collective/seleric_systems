@@ -6,8 +6,6 @@ import { useTransition } from "react"
 const TABS = [
   { id: "channel", label: "Channel" },
   { id: "campaign", label: "Campaign" },
-  { id: "ad", label: "Ad" },
-  { id: "sku", label: "SKU" },
   { id: "orders", label: "Orders" },
 ] as const
 

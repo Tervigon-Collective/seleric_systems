@@ -35,8 +35,6 @@ interface ChannelRow {
   platform: string
   href: string | null
   totalOrders: number
-  activeOrders: number
-  codOrders: number
   revenue: number
   spend: number
   roas: number
@@ -66,10 +64,8 @@ function ChannelSummaryTable({
         <thead>
           <tr>
             <th className={thCls}>Platform</th>
-            <th className={thCls}>Total Orders</th>
-            <th className={thCls}>Active (paid)</th>
-            <th className={thCls}>COD Pending</th>
-            <th className={thCls}>Revenue (Active, Ex-GST)</th>
+            <th className={thCls}>Orders Created</th>
+            <th className={thCls}>Revenue (Ex-GST)</th>
             <th className={thCls}>Spend</th>
             <th className={thCls}>ROAS</th>
             <th className={thCls}>Net Profit</th>
@@ -91,19 +87,9 @@ function ChannelSummaryTable({
                 )}
               </td>
               <td className={tdCls}>{row.totalOrders > 0 ? fmtCount(row.totalOrders) : "—"}</td>
-              <td className={tdCls}>{row.activeOrders > 0 ? fmtCount(row.activeOrders) : "—"}</td>
-              <td className={tdCls}>
-                {row.codOrders > 0 ? (
-                  <span className="text-amber-400">{fmtCount(row.codOrders)}</span>
-                ) : (
-                  "—"
-                )}
-              </td>
               <td className={tdCls}>{fmtMoney(row.revenue)}</td>
               <td className={tdCls}>{row.spend > 0 ? fmtMoney(row.spend) : "—"}</td>
-              <td className={tdCls}>
-                {row.roas > 0 ? `${row.roas.toFixed(2)}x` : "—"}
-              </td>
+              <td className={tdCls}>{row.roas > 0 ? `${row.roas.toFixed(2)}x` : "—"}</td>
               <td className={tdCls}>{row.netProfit !== 0 ? fmtMoney(row.netProfit) : "—"}</td>
             </tr>
           ))}
@@ -114,7 +100,6 @@ function ChannelSummaryTable({
             <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">
               {fmtCount(totalOrders)}
             </td>
-            <td className="px-3 py-2 text-xs text-slate-500 dark:text-night-500" colSpan={2}>—</td>
             <td className="px-3 py-2 text-xs font-semibold text-slate-300 dark:text-night-200">
               {fmtMoney(totalRev)}
             </td>
@@ -126,7 +111,7 @@ function ChannelSummaryTable({
         </tfoot>
       </table>
       <div className="px-3 py-1 text-xs text-slate-600 dark:text-night-600">
-        Total Orders (footer) = all orders created in period from fct_orders · Attribution rows from fct_order_attribution · "COD / Unattributed" = gap between fct_orders and attributed rows (payment_pending / cancelled / unresolved UTM)
+        Orders Created = all orders placed in period from fct_order_attribution (all statuses: paid, COD, cancelled, returned) · Unattributed = gap to fct_orders ground truth (unresolved UTM)
       </div>
     </div>
   )
@@ -151,27 +136,25 @@ export function AttributionChannelView({ data, searchParams }: Props) {
 
   // Group all non-standard platforms into "Other"
   const knownPlatforms = new Set(["meta", "google", "organic"])
-  let otherTotal = 0, otherActive = 0, otherCod = 0, otherRev = 0
+  let otherTotal = 0, otherRev = 0
   for (const p of platforms) {
     if (!knownPlatforms.has(p.platform)) {
       otherTotal += p.total_orders
-      otherActive += p.active_orders
-      otherCod += p.cod_orders
-      otherRev += p.active_revenue
+      otherRev += p.total_revenue
     }
   }
 
-  const totalActiveRev =
-    (m?.active_revenue ?? 0) +
-    (g?.active_revenue ?? 0) +
-    (org?.active_revenue ?? 0) +
+  const totalRev =
+    (m?.total_revenue ?? 0) +
+    (g?.total_revenue ?? 0) +
+    (org?.total_revenue ?? 0) +
     otherRev
 
-  const metaRoas = metaSpend > 0 && m ? m.active_revenue / metaSpend : 0
-  const googleRoas = googleSpend > 0 && g ? g.active_revenue / googleSpend : 0
-  const blendedRoas = totalSpend > 0 ? totalActiveRev / totalSpend : 0
+  const metaRoas = metaSpend > 0 && m ? m.total_revenue / metaSpend : 0
+  const googleRoas = googleSpend > 0 && g ? g.total_revenue / googleSpend : 0
+  const blendedRoas = totalSpend > 0 ? totalRev / totalSpend : 0
 
-  // Pivot trend for chart — orders created per day per channel
+  // Pivot trend for chart — orders created per day per channel (count)
   const trendMap = new Map<string, Record<string, unknown>>()
   for (const row of trend) {
     if (!trendMap.has(row.day)) trendMap.set(row.day, { order_date: row.day })
@@ -187,9 +170,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
       platform: "Meta",
       href: buildChannelUrl(searchParams, "meta"),
       totalOrders: m?.total_orders ?? 0,
-      activeOrders: m?.active_orders ?? 0,
-      codOrders: m?.cod_orders ?? 0,
-      revenue: m?.active_revenue ?? 0,
+      revenue: m?.total_revenue ?? 0,
       spend: metaSpend,
       roas: metaRoas,
       netProfit: n(pnlMeta["channel_pnl.meta_net_profit"]),
@@ -198,9 +179,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
       platform: "Google",
       href: buildChannelUrl(searchParams, "google"),
       totalOrders: g?.total_orders ?? 0,
-      activeOrders: g?.active_orders ?? 0,
-      codOrders: g?.cod_orders ?? 0,
-      revenue: g?.active_revenue ?? 0,
+      revenue: g?.total_revenue ?? 0,
       spend: googleSpend,
       roas: googleRoas,
       netProfit: n(pnlGoogle["channel_pnl.google_net_profit"]),
@@ -209,9 +188,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
       platform: "Organic",
       href: buildChannelUrl(searchParams, "organic"),
       totalOrders: org?.total_orders ?? 0,
-      activeOrders: org?.active_orders ?? 0,
-      codOrders: org?.cod_orders ?? 0,
-      revenue: org?.active_revenue ?? 0,
+      revenue: org?.total_revenue ?? 0,
       spend: 0,
       roas: 0,
       netProfit: n(pnlOrganic["channel_pnl.organic_net_profit"]),
@@ -222,8 +199,6 @@ export function AttributionChannelView({ data, searchParams }: Props) {
             platform: "Other",
             href: null,
             totalOrders: otherTotal,
-            activeOrders: otherActive,
-            codOrders: otherCod,
             revenue: otherRev,
             spend: 0,
             roas: 0,
@@ -233,17 +208,14 @@ export function AttributionChannelView({ data, searchParams }: Props) {
       : []),
   ]
 
-  // Reconciliation: orders in fct_orders but not in fct_order_attribution
-  // (COD/payment_pending + cancelled/voided if not stored in fct_order_attribution)
+  // Unattributed gap: orders in fct_orders not in fct_order_attribution (no UTM)
   const attributedTotal = channelRows.reduce((s, r) => s + r.totalOrders, 0)
   const unattributedGap = totalOrders - attributedTotal
   if (unattributedGap > 0) {
     channelRows.push({
-      platform: "COD / Unattributed",
+      platform: "Unattributed",
       href: null,
       totalOrders: unattributedGap,
-      activeOrders: 0,
-      codOrders: unattributedGap,
       revenue: 0,
       spend: 0,
       roas: 0,
@@ -253,31 +225,21 @@ export function AttributionChannelView({ data, searchParams }: Props) {
 
   const kpiCards = [
     {
-      label: "Total Orders Created",
+      label: "Orders Created",
       value: fmtCount(totalOrders),
-      sub: "all Shopify orders in period",
+      sub: "all orders placed in period",
     },
     {
-      label: "Active (Paid) Orders",
-      value: fmtCount((m?.active_orders ?? 0) + (g?.active_orders ?? 0) + (org?.active_orders ?? 0) + otherActive),
-      sub: "delivered / paid",
-    },
-    {
-      label: "COD Pending",
-      value: fmtCount((m?.cod_orders ?? 0) + (g?.cod_orders ?? 0) + (org?.cod_orders ?? 0) + otherCod),
-      sub: "payment_pending — undelivered",
-    },
-    {
-      label: "Active Revenue",
-      value: fmtMoney(totalActiveRev),
-      sub: "ex-GST, paid orders only",
+      label: "Revenue (Ex-GST)",
+      value: fmtMoney(totalRev),
+      sub: "all created orders",
     },
     { label: "Meta Spend", value: fmtMoney(metaSpend), sub: null },
     { label: "Google Spend", value: fmtMoney(googleSpend), sub: null },
     {
       label: "Blended ROAS",
       value: blendedRoas > 0 ? `${blendedRoas.toFixed(2)}x` : "—",
-      sub: "active rev / total spend",
+      sub: "revenue / total spend",
     },
   ]
 
@@ -309,7 +271,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartCard
           title="Orders created by channel"
-          subtitle="All orders created per day, by last-touch channel · direct ClickHouse"
+          subtitle="All orders placed per day by last-touch channel · fct_order_attribution direct"
           cube="fct_order_attribution"
           className="xl:col-span-2"
         >
@@ -321,6 +283,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
               { label: "Organic", measure: "organic" },
               { label: "Other", measure: "other" },
             ]}
+            valueType="count"
           />
         </ChartCard>
 
@@ -333,7 +296,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
           <ChannelSummaryTable
             rows={channelRows}
             totalOrders={totalOrders}
-            totalRev={totalActiveRev}
+            totalRev={totalRev}
             totalSpend={totalSpend}
           />
         </ChartCard>

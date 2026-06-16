@@ -5,14 +5,10 @@ import { AttributionViewTabs } from "@/components/attribution/AttributionViewTab
 import { AttributionChannelFilter } from "@/components/attribution/AttributionChannelFilter"
 import { AttributionChannelView } from "@/components/attribution/AttributionChannelView"
 import { AttributionCampaignView } from "@/components/attribution/AttributionCampaignView"
-import { AttributionAdView } from "@/components/attribution/AttributionAdView"
-import { AttributionSkuView } from "@/components/attribution/AttributionSkuView"
 import { AttributionOrdersView } from "@/components/attribution/AttributionOrdersView"
 import {
   fetchAttributionChannel,
   fetchAttributionCampaigns,
-  fetchAttributionAds,
-  fetchAttributionSkus,
   fetchAttributionOrders,
   type AttributionChannel,
 } from "@/lib/dashboard/queries/attribution"
@@ -23,7 +19,7 @@ function firstParam(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v
 }
 
-const VALID_VIEWS = ["channel", "campaign", "ad", "sku", "orders"] as const
+const VALID_VIEWS = ["channel", "campaign", "orders"] as const
 type ViewId = (typeof VALID_VIEWS)[number]
 
 function parseView(raw: string | undefined): ViewId {
@@ -48,7 +44,7 @@ export default async function AttributionPage({
   const rangeLabel = dateRangeLabel(range)
   const brandText = brandLabel(brand)
 
-  const showChannelFilter = view === "campaign" || view === "orders"
+  const showChannelFilter = view === "campaign"
 
   let content: React.ReactNode
   let error: string | null = null
@@ -60,12 +56,6 @@ export default async function AttributionPage({
     } else if (view === "campaign") {
       const data = await fetchAttributionCampaigns(range, brand, channel)
       content = <AttributionCampaignView data={data} channel={channel} />
-    } else if (view === "ad") {
-      const data = await fetchAttributionAds(range, brand)
-      content = <AttributionAdView data={data} />
-    } else if (view === "sku") {
-      const data = await fetchAttributionSkus(range, brand)
-      content = <AttributionSkuView data={data} />
     } else {
       const data = await fetchAttributionOrders(range, brand, channel)
       content = <AttributionOrdersView data={data} />

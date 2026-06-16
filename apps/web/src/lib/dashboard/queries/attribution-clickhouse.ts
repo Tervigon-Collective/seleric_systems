@@ -4,28 +4,53 @@ import { clickHouseQuery } from "@/lib/clickhouse-client"
 import { type DashboardBrandFilter } from "../brand-filter"
 import { type DashboardDateRange } from "../date-ranges"
 
+// ─── Channel-view types ──────────────────────────────────────────────────────
+
 export interface DirectPlatformStat {
   platform: string
-  total_orders: number   // all statuses (ground truth)
-  active_orders: number  // order_status = 'active' (paid / delivered)
-  cod_orders: number     // order_status = 'payment_pending' (COD undelivered)
-  active_revenue: number // SUM(net_revenue_excl_tax) for active only
+  total_orders: number
+  total_revenue: number  // net_price / 1.18 from fct_order_items (placed value ex GST)
 }
 
 export interface DirectTrendRow {
   day: string
   platform: string
-  orders: number   // total orders created that day (all statuses)
-  revenue: number  // active orders revenue that day
+  orders: number
 }
 
 export interface AttributionDirectData {
-  totalOrders: number            // COUNT(*) from fct_orders — ground truth
-  metaSpend: number              // SUM(meta_spend) from fct_daily_pnl
-  googleSpend: number            // SUM(google_spend) from fct_daily_pnl
+  totalOrders: number
+  metaSpend: number
+  googleSpend: number
   platforms: DirectPlatformStat[]
   trend: DirectTrendRow[]
 }
+
+// ─── Campaign drill-down types ───────────────────────────────────────────────
+
+/** Order counts per campaign × adset × ad — no SKU join, so orders are not double-counted */
+export interface CampaignAdRow {
+  platform: string
+  campaign_name: string
+  adset_name: string
+  ad_id: string
+  ad_name: string
+  orders: number
+}
+
+/** Revenue + units breakdown per ad × SKU */
+export interface CampaignAdSkuRow {
+  platform: string
+  ad_id: string
+  campaign_name: string
+  adset_name: string
+  sku: string
+  product_title: string
+  units: number
+  revenue: number  // net_price / 1.18 (placed value ex GST)
+}
+
+// ─── Channel-view fetch ──────────────────────────────────────────────────────
 
 export async function fetchAttributionDirect(
   range: DashboardDateRange,
@@ -43,32 +68,26 @@ export async function fetchAttributionDirect(
         AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
     `),
 
-    clickHouseQuery<{
-      platform: string
-      total_orders: string
-      active_orders: string
-      cod_orders: string
-      active_revenue: string
-    }>(`
+    // Gross revenue via LEFT JOIN with fct_order_items (placed value, all statuses)
+    clickHouseQuery<{ platform: string; total_orders: string; total_revenue: string }>(`
       SELECT
-        coalesce(nullIf(lt_platform, ''), 'other')                                      AS platform,
-        toInt64(COUNT(DISTINCT order_id))                                               AS total_orders,
-        toInt64(countDistinctIf(order_id, order_status = 'active'))                    AS active_orders,
-        toInt64(countDistinctIf(order_id, order_status = 'payment_pending'))           AS cod_orders,
-        toFloat64(sumIf(net_revenue_excl_tax, order_status = 'active'))                AS active_revenue
-      FROM gold.fct_order_attribution
-      WHERE brand_id = ${b}
-        AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
+        coalesce(nullIf(a.lt_platform, ''), 'other')      AS platform,
+        toInt64(COUNT(DISTINCT a.order_id))               AS total_orders,
+        toFloat64(SUM(i.net_price)) / 1.18                AS total_revenue
+      FROM gold.fct_order_attribution a
+      LEFT JOIN gold.fct_order_items i
+        ON a.order_id = i.order_id AND a.brand_id = i.brand_id
+      WHERE a.brand_id = ${b}
+        AND a.order_date BETWEEN toDate('${s}') AND toDate('${e}')
       GROUP BY platform
       ORDER BY total_orders DESC
     `),
 
-    clickHouseQuery<{ day: string; platform: string; orders: string; revenue: string }>(`
+    clickHouseQuery<{ day: string; platform: string; orders: string }>(`
       SELECT
-        formatDateTime(order_date, '%Y-%m-%d')                                         AS day,
-        coalesce(nullIf(lt_platform, ''), 'other')                                     AS platform,
-        toInt64(COUNT(DISTINCT order_id))                                               AS orders,
-        toFloat64(sumIf(net_revenue_excl_tax, order_status = 'active'))                AS revenue
+        formatDateTime(order_date, '%Y-%m-%d')              AS day,
+        coalesce(nullIf(lt_platform, ''), 'other')          AS platform,
+        toInt64(COUNT(DISTINCT order_id))                   AS orders
       FROM gold.fct_order_attribution
       WHERE brand_id = ${b}
         AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
@@ -96,15 +115,171 @@ export async function fetchAttributionDirect(
     platforms: platformRows.map((r) => ({
       platform: r.platform,
       total_orders: Number(r.total_orders),
-      active_orders: Number(r.active_orders),
-      cod_orders: Number(r.cod_orders),
-      active_revenue: Number(r.active_revenue),
+      total_revenue: Number(r.total_revenue),
     })),
     trend: trendRows.map((r) => ({
       day: r.day,
       platform: r.platform,
       orders: Number(r.orders),
-      revenue: Number(r.revenue),
     })),
   }
+}
+
+// ─── Campaign drill-down fetches ─────────────────────────────────────────────
+
+function platformClause(channel: string): string {
+  if (channel === "all") return ""
+  return `AND lt_platform = '${channel}'`
+}
+
+/** Distinct order counts at campaign and adset levels — for correct rollups
+ * (summing ad-level COUNT(DISTINCT) over-counts when an order touches multiple ads in the same adset). */
+export interface CampaignRollupOrders {
+  campaign: Map<string, number>        // key: `${platform}||${campaign_name}`
+  adset: Map<string, number>           // key: `${platform}||${campaign_name}||${adset_name}`
+}
+
+export async function fetchCampaignRollupOrders(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter,
+  channel: string,
+): Promise<CampaignRollupOrders> {
+  const b = brand.id
+  const s = range.start
+  const e = range.end
+  const pf = platformClause(channel)
+
+  const [campaignRows, adsetRows] = await Promise.all([
+    clickHouseQuery<{ platform: string; campaign_name: string; orders: string }>(`
+      SELECT
+        coalesce(nullIf(lt_platform, ''), 'other')                   AS platform,
+        coalesce(nullIf(lt_campaign_name, ''), 'Unknown Campaign')   AS campaign_name,
+        toInt64(COUNT(DISTINCT order_id))                            AS orders
+      FROM gold.fct_order_attribution
+      WHERE brand_id = ${b}
+        AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
+        ${pf}
+      GROUP BY platform, campaign_name
+    `),
+    clickHouseQuery<{ platform: string; campaign_name: string; adset_name: string; orders: string }>(`
+      SELECT
+        coalesce(nullIf(lt_platform, ''), 'other')                   AS platform,
+        coalesce(nullIf(lt_campaign_name, ''), 'Unknown Campaign')   AS campaign_name,
+        coalesce(nullIf(lt_adset_name, ''), 'Unknown Adset')         AS adset_name,
+        toInt64(COUNT(DISTINCT order_id))                            AS orders
+      FROM gold.fct_order_attribution
+      WHERE brand_id = ${b}
+        AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
+        ${pf}
+      GROUP BY platform, campaign_name, adset_name
+    `),
+  ])
+
+  const campaign = new Map<string, number>()
+  for (const r of campaignRows) {
+    campaign.set(`${r.platform}||${r.campaign_name}`, Number(r.orders))
+  }
+  const adset = new Map<string, number>()
+  for (const r of adsetRows) {
+    adset.set(`${r.platform}||${r.campaign_name}||${r.adset_name}`, Number(r.orders))
+  }
+  return { campaign, adset }
+}
+
+/** Order counts at campaign × adset × ad level — no SKU join to avoid double-counting */
+export async function fetchCampaignAdRows(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter,
+  channel: string,
+): Promise<CampaignAdRow[]> {
+  const b = brand.id
+  const s = range.start
+  const e = range.end
+  const pf = platformClause(channel)
+
+  const rows = await clickHouseQuery<{
+    platform: string
+    campaign_name: string
+    adset_name: string
+    ad_id: string
+    ad_name: string
+    orders: string
+  }>(`
+    SELECT
+      coalesce(nullIf(lt_platform, ''), 'other')                          AS platform,
+      coalesce(nullIf(lt_campaign_name, ''), 'Unknown Campaign')          AS campaign_name,
+      coalesce(nullIf(lt_adset_name, ''), 'Unknown Adset')               AS adset_name,
+      coalesce(lt_ad_id, '')                                              AS ad_id,
+      coalesce(nullIf(lt_ad_name, ''), lt_ad_id, 'Unknown Ad')          AS ad_name,
+      toInt64(COUNT(DISTINCT order_id))                                   AS orders
+    FROM gold.fct_order_attribution
+    WHERE brand_id = ${b}
+      AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
+      ${pf}
+    GROUP BY platform, campaign_name, adset_name, ad_id, ad_name
+    ORDER BY orders DESC
+    LIMIT 2000
+  `)
+
+  return rows.map((r) => ({
+    platform: r.platform,
+    campaign_name: r.campaign_name,
+    adset_name: r.adset_name,
+    ad_id: r.ad_id,
+    ad_name: r.ad_name,
+    orders: Number(r.orders),
+  }))
+}
+
+/** Gross revenue + units per ad × SKU — used for SKU breakdown rows */
+export async function fetchCampaignAdSkuRows(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter,
+  channel: string,
+): Promise<CampaignAdSkuRow[]> {
+  const b = brand.id
+  const s = range.start
+  const e = range.end
+  const pf = channel === "all" ? "" : `AND a.lt_platform = '${channel}'`
+
+  const rows = await clickHouseQuery<{
+    platform: string
+    ad_id: string
+    campaign_name: string
+    adset_name: string
+    sku: string
+    product_title: string
+    units: string
+    revenue: string
+  }>(`
+    SELECT
+      coalesce(nullIf(a.lt_platform, ''), 'other')                       AS platform,
+      coalesce(a.lt_ad_id, '')                                           AS ad_id,
+      coalesce(nullIf(a.lt_campaign_name, ''), 'Unknown Campaign')       AS campaign_name,
+      coalesce(nullIf(a.lt_adset_name, ''), 'Unknown Adset')            AS adset_name,
+      coalesce(nullIf(i.sku, ''), 'Unknown SKU')                        AS sku,
+      coalesce(nullIf(i.product_title, ''), 'Unknown Product')          AS product_title,
+      toInt64(SUM(i.quantity))                                           AS units,
+      toFloat64(SUM(i.net_price)) / 1.18                                AS revenue
+    FROM gold.fct_order_attribution a
+    JOIN gold.fct_order_items i
+      ON a.order_id = i.order_id AND a.brand_id = i.brand_id
+    WHERE a.brand_id = ${b}
+      AND a.order_date BETWEEN toDate('${s}') AND toDate('${e}')
+      ${pf}
+    GROUP BY platform, ad_id, campaign_name, adset_name, sku, product_title
+    ORDER BY revenue DESC
+    LIMIT 5000
+  `)
+
+  return rows.map((r) => ({
+    platform: r.platform,
+    ad_id: r.ad_id,
+    campaign_name: r.campaign_name,
+    adset_name: r.adset_name,
+    sku: r.sku,
+    product_title: r.product_title,
+    units: Number(r.units),
+    revenue: Number(r.revenue),
+  }))
 }
