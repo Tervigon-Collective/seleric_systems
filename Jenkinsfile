@@ -1,3 +1,13 @@
+properties([
+    githubProjectProperty(
+        projectUrlStr: 'https://github.com/Tervigon-Collective/seleric_systems/',
+        displayName: '',
+    ),
+    pipelineTriggers([
+        githubPush(),
+    ]),
+])
+
 pipeline {
     agent any
 
@@ -8,10 +18,6 @@ pipeline {
         ORCHESTRATOR_PORT  = '8000'
         WEB_PORT           = '3001'
         MCP_SHOPIFY_PORT   = '3101'
-    }
-
-    triggers {
-        githubPush()
     }
 
     stages {
@@ -43,6 +49,24 @@ pipeline {
 
                     echo "=== .env present under APP_DIR? ==="
                     test -f "${APP_DIR}/.env" && echo "OK: .env exists" || { echo "FAIL: create ${APP_DIR}/.env on the server"; exit 1; }
+                """
+            }
+        }
+
+        stage('Generate Prisma Client') {
+            steps {
+                sh """
+                    set -e
+                    cd "${APP_DIR}"
+                    echo "=== Generating Prisma client (gitignored; required for bind-mounted web src) ==="
+                    if command -v pnpm >/dev/null 2>&1; then
+                        pnpm db:generate
+                    else
+                        npx --yes pnpm@9.1.0 db:generate
+                    fi
+                    test -f apps/web/src/generated/prisma/index.js \\
+                      && echo "OK: Prisma client generated" \\
+                      || { echo "FAIL: Prisma client missing after generate"; exit 1; }
                 """
             }
         }
@@ -104,6 +128,9 @@ pipeline {
                         docker compose logs --tail=100 web || true
                         exit 1
                     fi
+
+                    echo "=== Health check web API /api/health :${WEB_PORT} ==="
+                    curl -fsS "http://127.0.0.1:${WEB_PORT}/api/health"
 
                     echo "=== Health check mcp-shopify :${MCP_SHOPIFY_PORT} ==="
                     curl -fsS "http://127.0.0.1:${MCP_SHOPIFY_PORT}/health"
