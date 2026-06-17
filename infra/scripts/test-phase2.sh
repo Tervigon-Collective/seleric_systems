@@ -22,8 +22,8 @@ info() { echo -e "  ${YELLOW}→${NC} $1"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ORCH_DIR="$REPO_ROOT/services/orchestrator"
-AGENTS_DIR="$REPO_ROOT/services/agents"
+ORCH_DIR="$REPO_ROOT/backend/orchestrator"
+AGENTS_DIR="$REPO_ROOT/backend/agents"
 
 SIG_ID_BASE="p2-gate-$(date +%s)"
 

@@ -1,0 +1,242 @@
+﻿import { PnlKpiStrip } from "@/components/charts/PnlKpiStrip"
+
+import { AreaTrendChart } from "@/components/charts/AreaTrendChart"
+
+import { ChartCard } from "@/components/charts/ChartCard"
+
+import { DonutChart } from "@/components/charts/DonutChart"
+
+import { GroupedBarChart } from "@/components/charts/GroupedBarChart"
+
+import { PnlWaterfallChart } from "@/components/charts/PnlWaterfallChart"
+
+import { StackedBarChart } from "@/components/charts/StackedBarChart"
+
+import { TrendChart } from "@/components/chat/TrendChart"
+
+import { DashboardFilterControls } from "@/components/dashboard/DashboardFilterControls"
+import { brandLabel, parseDashboardBrandFilter } from "@/lib/dashboard/brand-filter"
+
+import {
+  CHANNEL_NET_PROFIT_SERIES,
+  channelRevenueSlices,
+  pnlWaterfallSteps,
+} from "@/lib/dashboard/page-helpers"
+import { cogsBreakdownFromRow } from "@/lib/dashboard/cogs-breakdown"
+
+import { fetchMainDashboardData } from "@/lib/dashboard/queries/main"
+import { getLastCubeError } from "@/lib/dashboard/cube-query"
+import { DomainChatRegistrar } from "@/components/chat/DomainChatRegistrar"
+import { buildDashboardContext } from "@/lib/chat/domain-context"
+
+import {
+
+  dateRangeLabel,
+
+  parseDashboardDateRange,
+
+  type DashboardSearchParams,
+
+} from "@/lib/dashboard/date-ranges"
+
+
+
+export const revalidate = 60
+
+
+
+export default async function DashboardPage({
+
+  searchParams,
+
+}: {
+
+  searchParams?: DashboardSearchParams
+
+}) {
+
+  const range = parseDashboardDateRange(searchParams)
+  const brand = parseDashboardBrandFilter(searchParams)
+  const rangeLabel = dateRangeLabel(range)
+  const brandText = brandLabel(brand)
+
+
+
+  let data
+
+  let error: string | null = null
+
+  try {
+
+    data = await fetchMainDashboardData(range, brand)
+
+    const cubeErr = getLastCubeError()
+    const hasAnyData =
+      (data?.kpiPeriodCompare.current["daily_pnl.net_profit"] != null) ||
+      (data?.netProfitTrend?.length ?? 0) > 0
+
+    if (cubeErr && !hasAnyData) {
+      error = `Cube unreachable (${cubeErr}). Check network or set CUBE_API_URL.`
+    }
+
+  } catch (e) {
+
+    error = String(e)
+
+    data = null
+
+  }
+
+
+
+  const channelRow = data?.channelRevenue[0]
+
+  const revenueSlices = channelRow ? channelRevenueSlices(channelRow) : []
+
+  const waterfallRow = data?.pnlWaterfall[0] ?? {}
+  const cogsBreakdown = cogsBreakdownFromRow(waterfallRow)
+
+
+
+  return (
+
+    <main className="p-6 space-y-6">
+
+      {data && (
+        <DomainChatRegistrar
+          context={buildDashboardContext(data, range, brand)}
+        />
+      )}
+
+      <header className="flex flex-wrap items-start justify-between gap-4">
+
+        <div>
+
+          <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">Executive Overview</h1>
+
+          <p className="text-sm text-stone-500 dark:text-night-500 mt-1">
+
+            Main dashboard · {brandText} · {rangeLabel} · net_profit = gross_profit − ad spend − ops costs (shipping, fees, etc.)
+
+          </p>
+
+          {error && (
+
+            <p className="mt-2 text-sm text-amber-400">
+
+              Cube unavailable — charts may be empty. Check CUBE_API_URL / SELERIC_API_KEY.
+
+            </p>
+
+          )}
+
+        </div>
+
+        <DashboardFilterControls
+          start={range.start}
+          end={range.end}
+          spanDays={range.spanDays}
+          searchParams={searchParams}
+        />
+
+      </header>
+
+
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+        <ChartCard title="Key metrics" subtitle={`${range.spanDays}d vs prior ${range.spanDays}d`} cube="daily_pnl" className="xl:col-span-2">
+          <PnlKpiStrip
+            variant="simple"
+            current={data?.kpiPeriodCompare.current ?? {}}
+            prior={data?.kpiPeriodCompare.prior ?? {}}
+            priorLabel={data?.kpiPeriodCompare.priorLabel ?? ""}
+            cogsBreakdownCurrent={data?.kpiPeriodCompare.cogsBreakdownCurrent ?? cogsBreakdownFromRow({})}
+            cogsBreakdownPrior={data?.kpiPeriodCompare.cogsBreakdownPrior ?? cogsBreakdownFromRow({})}
+          />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Net profit over time" subtitle={`net_profit + gross_profit (net sales − COGS) · ${range.spanDays}d`} cube="daily_pnl">
+
+          <TrendChart rows={data?.netProfitTrend ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Net sales vs ad spend vs COGS" subtitle="net sales ex GST · COGS · ad spend · net profit" cube="daily_pnl">
+
+          <GroupedBarChart rows={data?.revenueVsSpend ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Net sales by channel" subtitle="Attributed net sales ex GST" cube="channel_pnl">
+
+          <DonutChart slices={revenueSlices} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Net profit by channel" subtitle="Attributed channels + unattributed margin & ops costs · stacks to company net profit" cube="channel_pnl">
+
+          <StackedBarChart rows={data?.channelNetProfitTrend ?? []} series={[...CHANNEL_NET_PROFIT_SERIES]} />
+
+        </ChartCard>
+
+
+
+        <ChartCard
+          title="Orders & AOV trend"
+          subtitle="orders placed daily (left) + AOV (right) · placement universe matches the Orders KPI tile"
+          cube="shopify_orders"
+        >
+
+          <TrendChart rows={data?.ordersAovTrend ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="ROAS by channel" subtitle="Meta vs Google daily" cube="channel_pnl">
+
+          <TrendChart rows={data?.roasByChannel ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Gross margin % trend" subtitle="gross_profit / net sales ex GST" cube="daily_pnl">
+
+          <AreaTrendChart rows={data?.grossMarginTrend ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="Return rate trend" subtitle="returned_orders / net_orders daily" cube="shopify_orders">
+
+          <TrendChart rows={data?.returnRateTrend ?? []} />
+
+        </ChartCard>
+
+
+
+        <ChartCard title="P&L waterfall" subtitle="Product COGS + ops costs breakdown · period total" cube="canonical_pnl">
+          <PnlWaterfallChart steps={pnlWaterfallSteps(waterfallRow)} cogsBreakdown={cogsBreakdown} />
+
+        </ChartCard>
+
+      </div>
+
+    </main>
+
+  )
+
+}
+

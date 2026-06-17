@@ -90,8 +90,8 @@ echo "Gate 5: ClickHouse query guard"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-ORCH_DIR="$REPO_ROOT/services/orchestrator"
-AGENTS_DIR="$REPO_ROOT/services/agents"
+ORCH_DIR="$REPO_ROOT/backend/orchestrator"
+AGENTS_DIR="$REPO_ROOT/backend/agents"
 
 GUARD=$(PYTHONPATH="$ORCH_DIR:$AGENTS_DIR" python3 -c "
 from src.tools.query_guard import validate_query

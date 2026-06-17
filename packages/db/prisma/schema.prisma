@@ -5,7 +5,7 @@
 
 generator client {
   provider        = "prisma-client-js"
-  output          = "../../../apps/web/src/generated/prisma"
+  output          = "../../../frontend/src/generated/prisma"
   previewFeatures = ["postgresqlExtensions"]
 }
 

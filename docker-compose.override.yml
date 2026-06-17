@@ -25,7 +25,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # The base compose file bind-mounts ./packages and ./apps/web/src into the
+  # The base compose file bind-mounts ./packages and ./frontend/src into the
   # container so source edits hot-reload. But that bind mount also hides any
   # node_modules / .prisma folders the image installed underneath those paths,
   # which breaks `@prisma/client` resolution from packages/db. Declare anonymous
@@ -33,11 +33,11 @@ services:
   # the bind mount.
   web:
     volumes:
-      - ./apps/web/src:/app/apps/web/src
+      - ./frontend/src:/app/frontend/src
       - ./packages:/app/packages
       - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - /app/frontend/node_modules
+      - /app/frontend/.next
       - /app/packages/db/node_modules
       - /app/packages/queue/node_modules
       - /app/packages/shared-types/node_modules

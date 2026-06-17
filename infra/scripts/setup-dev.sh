@@ -52,7 +52,7 @@ pnpm db:generate
 pnpm --filter @multiagent/db migrate:dev --name init || true
 
 step "Setting up Python orchestrator..."
-cd services/orchestrator
+cd backend/orchestrator
 if command -v uv >/dev/null; then
   uv sync
 else

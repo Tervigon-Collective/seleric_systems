@@ -56,7 +56,7 @@ services:
 
   orchestrator:
     build:
-      context: ./services/orchestrator
+      context: ./backend/orchestrator
       dockerfile: Dockerfile
     container_name: multiagent-orchestrator
     restart: unless-stopped
@@ -71,8 +71,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=development
     volumes:
-      - ./services/orchestrator/src:/app/src  # Hot reload
-      - ./services/agents:/app/agents          # Agent packages
+      - ./backend/orchestrator/src:/app/src  # Hot reload
+      - ./backend/agents:/app/agents          # Agent packages
       - ./config:/app/config                   # Rules YAML
     depends_on:
       postgres:
@@ -90,7 +90,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: services/worker/Dockerfile
+      dockerfile: backend/worker/Dockerfile
     container_name: multiagent-worker
     restart: unless-stopped
     env_file:
@@ -103,7 +103,7 @@ services:
       - ORCHESTRATOR_URL=http://orchestrator:8000
       - ENVIRONMENT=development
     volumes:
-      - ./services/worker/src:/app/services/worker/src  # Hot reload
+      - ./backend/worker/src:/app/backend/worker/src  # Hot reload
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,7 +115,7 @@ services:
   mcp-shopify:
     build:
       context: .
-      dockerfile: services/mcp-shopify/Dockerfile
+      dockerfile: backend/mcp-shopify/Dockerfile
     container_name: multiagent-mcp-shopify
     restart: unless-stopped
     ports:
@@ -128,7 +128,7 @@ services:
       - WRITE_ENABLED=false
       - ENVIRONMENT=development
     volumes:
-      - ./services/mcp-shopify/src:/app/services/mcp-shopify/src  # Hot reload
+      - ./backend/mcp-shopify/src:/app/backend/mcp-shopify/src  # Hot reload
     networks:
       - multiagent
     healthcheck:
@@ -140,7 +140,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: frontend/Dockerfile
       target: development
     container_name: multiagent-web
     restart: unless-stopped
@@ -156,7 +156,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_WS_URL=ws://localhost:8000
     volumes:
-      - ./apps/web/src:/app/apps/web/src      # Hot reload
+      - ./frontend/src:/app/frontend/src      # Hot reload
       - ./packages:/app/packages              # Shared packages
     depends_on:
       - postgres

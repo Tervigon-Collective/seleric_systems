@@ -64,7 +64,7 @@ pipeline {
                     else
                         npx --yes pnpm@9.1.0 db:generate
                     fi
-                    test -f apps/web/src/generated/prisma/index.js \\
+                    test -f frontend/src/generated/prisma/index.js \\
                       && echo "OK: Prisma client generated" \\
                       || { echo "FAIL: Prisma client missing after generate"; exit 1; }
                 """

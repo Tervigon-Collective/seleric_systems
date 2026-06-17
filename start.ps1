@@ -52,12 +52,12 @@ if (-not $SkipOrchestrator) {
     Write-Step "Starting orchestrator (new window, port 8000)..."
 
     $pythonPath = @(
-        "$Root\services\orchestrator",
-        "$Root\services",
+        "$Root\backend\orchestrator",
+        "$Root\backend",
         "$Root"
     ) -join ";"
 
-    $orchDir = "$Root\services\orchestrator"
+    $orchDir = "$Root\backend\orchestrator"
     $orchCmd = @"
 Set-Location '$orchDir'
 `$env:PYTHONPATH = '$pythonPath'

@@ -56,10 +56,10 @@ ORCH_PID=""
 if [ "$SKIP_ORCHESTRATOR" -eq 0 ]; then
   step "Starting orchestrator (background, port 8000)..."
 
-  export PYTHONPATH="$ROOT/services/orchestrator:$ROOT/services:$ROOT"
+  export PYTHONPATH="$ROOT/backend/orchestrator:$ROOT/backend:$ROOT"
   export ENVIRONMENT=development
 
-  cd "$ROOT/services/orchestrator"
+  cd "$ROOT/backend/orchestrator"
   if command -v uv >/dev/null 2>&1; then
     uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload &
   else
