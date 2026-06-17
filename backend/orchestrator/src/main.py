@@ -19,6 +19,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import router
+from src.api.routes_crud import router as crud_router
+from src.api.routes_data import router as data_router
 from src.sandbox.routes import router as sandbox_router
 from src.db.client import close_pool, get_pool, health_check as db_health
 from src.memory.cube_client import health_check as cube_health
@@ -70,6 +72,8 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(crud_router)
+app.include_router(data_router)
 app.include_router(sandbox_router)
 
 

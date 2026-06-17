@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server"
-import { getControlStats } from "@/lib/services/control.service"
+import { pythonGet } from "@/lib/api/python-proxy"
+import type { NextRequest } from "next/server"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  const stats = await getControlStats()
-  return NextResponse.json(stats)
+export async function GET(request: NextRequest) {
+  return pythonGet("/control/stats", request.nextUrl.searchParams)
 }

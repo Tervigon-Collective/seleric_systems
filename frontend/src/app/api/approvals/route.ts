@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server"
-import { getPendingApprovals } from "@/lib/services/approval.service"
+import { pythonGet } from "@/lib/api/python-proxy"
+import type { NextRequest } from "next/server"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  const actions = await getPendingApprovals()
-  return NextResponse.json(actions)
+export async function GET(request: NextRequest) {
+  return pythonGet("/approvals", request.nextUrl.searchParams)
 }
