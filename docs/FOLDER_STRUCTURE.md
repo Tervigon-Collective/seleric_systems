@@ -1,301 +1,200 @@
 # Folder Structure
 
 ```
-multiagent-system/
+seleric_systems/
 │
-├── .cursor/
-│   └── rules/
-│       ├── 00-general.mdc          # Project-wide conventions, naming, security
-│       ├── 01-orchestrator.mdc     # LangGraph patterns, context assembly, node rules
-│       ├── 02-agents.mdc           # Agent interface, tool use loop, output schemas
-│       ├── 03-frontend.mdc         # Next.js 14 patterns, component rules, chat
-│       ├── 04-mcp-tools.mdc        # MCP server patterns, tool definitions, Pipeboard
-│       └── 05-database.mdc         # Prisma, Redis key schema, ClickHouse patterns
+├── frontend/                           # Next.js 14 · App Router · Port 3000 / 3007 (dev)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.tsx              # Root layout (Clerk auth, global nav)
+│   │   │   ├── page.tsx                # Root redirect → /dashboard
+│   │   │   ├── (auth)/
+│   │   │   │   ├── sign-in/page.tsx
+│   │   │   │   └── sign-up/page.tsx
+│   │   │   ├── dashboard/page.tsx      # P&L overview (Server Component)
+│   │   │   ├── ads/                    # Ad performance + campaign detail + neurotag
+│   │   │   ├── attribution/page.tsx
+│   │   │   ├── chat/page.tsx           # AI chat UI
+│   │   │   ├── control/                # Approvals, history, rules sub-pages
+│   │   │   ├── insights/page.tsx
+│   │   │   ├── pnl/page.tsx
+│   │   │   ├── shopify/page.tsx
+│   │   │   ├── tools/cogs-simulation/  # COGS simulator
+│   │   │   └── api/                    # Next.js API routes (BFF layer)
+│   │   │       ├── chat/route.ts       # Streaming LLM endpoint (3-model routing)
+│   │   │       ├── chat/creative-iq/route.ts
+│   │   │       ├── approvals/route.ts
+│   │   │       ├── approvals/[id]/route.ts  # HMAC approval decision + BullMQ enqueue
+│   │   │       ├── insights/route.ts
+│   │   │       ├── insights/[id]/route.ts
+│   │   │       ├── control/stats/route.ts
+│   │   │       ├── actions/history/route.ts
+│   │   │       ├── ads/placement/route.ts
+│   │   │       ├── ads/engagement/route.ts
+│   │   │       ├── neurotag/ads/route.ts
+│   │   │       ├── tools/cogs-data/route.ts
+│   │   │       ├── debug/cube/route.ts
+│   │   │       └── health/route.ts
+│   │   ├── components/                 # 87 React UI components organized by domain
+│   │   │   ├── attribution/            # 5 files
+│   │   │   ├── charts/                 # 27 files — pure rendering
+│   │   │   ├── chat/                   # 19 files — AI chat UI + sub-charts + insights
+│   │   │   ├── cogs/                   # 8 files — COGS simulator inputs/display
+│   │   │   ├── control/                # 2 files — approval cards
+│   │   │   ├── dashboard/              # 10 files — KPI panels, filters, agent activity
+│   │   │   ├── insight/                # Insight card display
+│   │   │   └── layout/                 # Shell, Sidebar, Header
+│   │   ├── hooks/
+│   │   │   └── useChartTheme.ts        # Theme palette utility
+│   │   ├── lib/
+│   │   │   ├── chat/                   # 12 files: model routing, tools, system prompts
+│   │   │   │   ├── model.ts            # 3-model resolver (data/analysis/fallback)
+│   │   │   │   ├── system-prompt.ts
+│   │   │   │   ├── domain-context.ts
+│   │   │   │   ├── computed-query.ts
+│   │   │   │   └── tools/              # 6 tool modules
+│   │   │   ├── dashboard/              # 12 files: Cube query builders per domain
+│   │   │   │   ├── queries/            # 10 query builder files
+│   │   │   │   ├── page-helpers.ts
+│   │   │   │   ├── transforms.ts
+│   │   │   │   ├── brand-filter.ts
+│   │   │   │   └── date-ranges.ts
+│   │   │   ├── services/               # 4 Prisma-backed service files
+│   │   │   │   ├── approval.service.ts
+│   │   │   │   ├── insight.service.ts
+│   │   │   │   ├── action.service.ts
+│   │   │   │   └── control.service.ts
+│   │   │   ├── api/                    # Typed client-side API wrappers
+│   │   │   │   └── python-proxy.ts     # Proxy to Python orchestrator
+│   │   │   ├── clickhouse-client.ts    # Raw ClickHouse HTTP client
+│   │   │   ├── cube-client.ts          # MCP-tool shim → cube-presets
+│   │   │   ├── cube-presets.ts         # Named Cube query helpers
+│   │   │   ├── cube-rest.ts            # Cube REST POST client (JWT auth)
+│   │   │   ├── cube-parse.ts           # Cube response → JS arrays
+│   │   │   ├── cogs-engine.ts          # COGS simulation engine (pure functions)
+│   │   │   ├── campaign-sku-matcher.ts # Campaign-SKU matching (pure functions)
+│   │   │   ├── prisma.ts               # PrismaClient singleton
+│   │   │   └── server-log.ts           # In-process ring-buffer logger
+│   │   └── generated/                  # Auto-generated files (do not edit)
+│   ├── Dockerfile
+│   ├── next.config.mjs
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   └── package.json
 │
-├── docs/
-│   ├── ARCHITECTURE.md             # System diagram, service map, external connections
-│   ├── DATA_FLOW.md                # End-to-end flows for signal → insight → action
-│   ├── CHAT.md                     # Chat architecture, tools, streaming, visual output
-│   ├── TECH_STACK.md               # Technology choices with rationale
-│   ├── REQUIREMENTS.md             # Functional + non-functional requirements, phase gates
-│   └── FOLDER_STRUCTURE.md         # This file
-│
-├── services/
-│   │
-│   ├── orchestrator/               # Python · FastAPI + LangGraph · Port 8000
+├── backend/
+│   ├── orchestrator/                   # Python · FastAPI + LangGraph · Port 8000
 │   │   ├── src/
-│   │   │   ├── main.py             # FastAPI app entry point
-│   │   │   ├── graph.py            # LangGraph StateGraph definition
-│   │   │   ├── state.py            # OrchestratorState TypedDict
-│   │   │   ├── api/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── routes.py       # /signal, /health, /status/{trace_id}
-│   │   │   │   └── schemas.py      # Pydantic request/response models
-│   │   │   ├── nodes/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── validate_signal.py
-│   │   │   │   ├── assemble_context.py
-│   │   │   │   ├── route_agents.py
-│   │   │   │   ├── run_agents.py   # Parallel agent dispatch
-│   │   │   │   ├── guardrail.py
-│   │   │   │   └── dispatch_actions.py
-│   │   │   ├── prompts/
-│   │   │   │   ├── insight.j2      # Jinja2 prompt for Insight Agent
-│   │   │   │   ├── meta.j2         # Jinja2 prompt for Meta Agent
-│   │   │   │   ├── shopify.j2      # Jinja2 prompt for Shopify Agent
-│   │   │   │   └── guardrail.j2    # Jinja2 prompt for Guardrail Agent
-│   │   │   ├── memory/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── redis_client.py # Session read/write/cache
-│   │   │   │   ├── vector_client.py# pgvector search + insert
-│   │   │   │   └── cube_client.py  # Seleric MCP / Cube REST calls
-│   │   │   ├── tools/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── clickhouse.py   # Query tool definition + executor
-│   │   │   │   ├── query_guard.py  # SQL validation layer
-│   │   │   │   └── pipeboard.py    # Pipeboard MCP HTTP client
-│   │   │   ├── schemas/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── signal.py       # SignalSchema
-│   │   │   │   ├── insight.py      # InsightCard
-│   │   │   │   ├── action.py       # ActionProposal, GuardrailResult
-│   │   │   │   └── agent.py        # AgentContext, AgentResult
-│   │   │   └── exceptions.py       # Custom exception classes
+│   │   │   ├── main.py                 # FastAPI entry point
+│   │   │   ├── graph.py                # LangGraph StateGraph definition
+│   │   │   ├── api/                    # /signal, /health, /status/{trace_id}
+│   │   │   ├── nodes/                  # validate_signal, assemble_context, guardrail, dispatch
+│   │   │   ├── prompts/                # Jinja2 prompt templates per agent
+│   │   │   ├── memory/                 # Redis, pgvector, Cube clients
+│   │   │   ├── tools/                  # ClickHouse query tool, pipeboard client
+│   │   │   └── schemas/                # Pydantic models (Signal, Insight, Action, Agent)
 │   │   ├── tests/
-│   │   │   ├── conftest.py
-│   │   │   ├── test_graph.py
-│   │   │   ├── test_context_assembly.py
-│   │   │   └── test_guardrail.py
 │   │   ├── pyproject.toml
 │   │   ├── requirements.txt
 │   │   └── Dockerfile
 │   │
-│   ├── agents/                     # Python packages · imported by orchestrator
-│   │   ├── insight/
-│   │   │   ├── src/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── agent.py        # run(context) -> AgentResult
-│   │   │   │   ├── tools.py        # get_tool_definitions() + execute_tool()
-│   │   │   │   └── parser.py       # parse_response() → InsightCard
-│   │   │   └── tests/
-│   │   │       └── test_insight_agent.py
-│   │   ├── meta/
-│   │   │   ├── src/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── agent.py
-│   │   │   │   ├── tools.py        # Pipeboard tool definitions + caller
-│   │   │   │   └── parser.py       # parse → list[ActionProposal]
-│   │   │   └── tests/
-│   │   │       └── test_meta_agent.py
-│   │   ├── shopify/
-│   │   │   ├── src/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── agent.py
-│   │   │   │   ├── tools.py        # Shopify MCP tool definitions + caller
-│   │   │   │   └── parser.py
-│   │   │   └── tests/
-│   │   │       └── test_shopify_agent.py
-│   │   └── guardrail/
-│   │       ├── src/
-│   │       │   ├── __init__.py
-│   │       │   ├── agent.py        # run(proposals) -> list[GuardrailResult]
-│   │       │   ├── rules_loader.py # Load + validate config/rules.yaml
-│   │       │   └── classifier.py   # Rule evaluation logic
-│   │       └── tests/
-│   │           └── test_guardrail_agent.py
+│   ├── agents/                         # Python · LangGraph node packages (imported by orchestrator)
+│   │   ├── insight/src/                # agent.py, tools.py, parser.py
+│   │   ├── meta/src/                   # agent.py, tools.py (Pipeboard), parser.py
+│   │   ├── shopify/src/                # agent.py, tools.py (Shopify MCP), parser.py
+│   │   └── guardrail/src/              # agent.py, rules_loader.py, classifier.py
 │   │
-│   ├── worker/                     # Node.js · BullMQ · Background jobs
+│   ├── creative_intelligence/          # Python · Creative scoring utilities
+│   │   └── neuro_scorer.py
+│   │
+│   ├── worker/                         # Node.js · BullMQ · Background jobs
 │   │   ├── src/
-│   │   │   ├── index.ts            # Worker entry point, queue registrations
-│   │   │   ├── queues.ts           # Queue name constants + BullMQ instances
-│   │   │   ├── jobs/
-│   │   │   │   ├── execute-action.ts    # Calls Pipeboard/Shopify MCP
-│   │   │   │   ├── send-notification.ts # Slack + email via Resend
-│   │   │   │   ├── record-outcome.ts    # Polls ClickHouse post-execution
-│   │   │   │   └── embed-insight.ts     # Generates + stores embedding
-│   │   │   ├── processors/
-│   │   │   │   ├── pipeboard.ts    # Pipeboard MCP write operations
-│   │   │   │   ├── shopify.ts      # Shopify Admin API write operations
-│   │   │   │   └── notifications.ts
-│   │   │   └── lib/
-│   │   │       ├── db.ts           # Prisma client
-│   │   │       ├── redis.ts        # Redis client (ioredis)
-│   │   │       └── anthropic.ts    # Embedding API calls
-│   │   ├── tests/
-│   │   ├── package.json
+│   │   │   ├── index.ts                # Worker entry point, queue registrations
+│   │   │   ├── queues.ts               # Queue name constants + BullMQ instances
+│   │   │   ├── jobs/                   # execute-action, send-notification, record-outcome, embed-insight
+│   │   │   ├── processors/             # pipeboard.ts, shopify.ts, notifications.ts
+│   │   │   └── lib/                    # db.ts, redis.ts, anthropic.ts
+│   │   ├── Dockerfile
 │   │   ├── tsconfig.json
-│   │   └── Dockerfile
+│   │   └── package.json
 │   │
-│   └── mcp-shopify/                # Node.js · MCP SDK · SSE · Port 3100
-│       ├── src/
-│       │   ├── server.ts           # MCP server entry point
-│       │   ├── tools/
-│       │   │   ├── index.ts        # Tool registry (LIST_TOOLS_RESULT)
-│       │   │   ├── get-products.ts
-│       │   │   ├── get-orders.ts
-│       │   │   ├── get-inventory.ts
-│       │   │   ├── get-analytics.ts
-│       │   │   ├── update-product.ts    # WRITE — checks WRITE_ENABLED
-│       │   │   └── create-discount.ts  # WRITE — checks WRITE_ENABLED
-│       │   ├── handlers/
-│       │   │   └── shopify-client.ts   # Shopify Admin API wrapper
-│       │   └── lib/
-│       │       └── write-guard.ts  # Checks WRITE_ENABLED env var
-│       ├── tests/
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── Dockerfile
-│
-├── apps/
-│   └── web/                        # Next.js 14 · App Router · Port 3000
-│       ├── src/
-│       │   ├── app/
-│       │   │   ├── layout.tsx      # Root layout (Clerk auth, global nav)
-│       │   │   ├── page.tsx        # Root redirect → /dashboard
-│       │   │   ├── (auth)/
-│       │   │   │   ├── sign-in/page.tsx
-│       │   │   │   └── sign-up/page.tsx
-│       │   │   ├── dashboard/
-│       │   │   │   ├── page.tsx        # P&L overview (Server Component)
-│       │   │   │   └── loading.tsx
-│       │   │   ├── insights/
-│       │   │   │   ├── page.tsx        # Insight feed (hybrid)
-│       │   │   │   └── [id]/page.tsx   # Insight detail
-│       │   │   ├── ads/
-│       │   │   │   ├── page.tsx        # Ads intelligence
-│       │   │   │   ├── [campaignId]/page.tsx
-│       │   │   │   └── loading.tsx
-│       │   │   ├── shopify/
-│       │   │   │   ├── page.tsx        # Shopify intelligence
-│       │   │   │   └── products/page.tsx
-│       │   │   ├── chat/
-│       │   │   │   └── page.tsx        # Claude Code-style chat
-│       │   │   ├── control/
-│       │   │   │   ├── page.tsx        # Control panel root
-│       │   │   │   ├── approvals/page.tsx
-│       │   │   │   ├── history/page.tsx
-│       │   │   │   └── rules/page.tsx  # YAML rule editor
-│       │   │   └── api/
-│       │   │       ├── metrics/
-│       │   │       │   └── route.ts    # Cube metric proxy
-│       │   │       ├── campaigns/
-│       │   │       │   └── route.ts    # Pipeboard campaigns proxy
-│       │   │       ├── insights/
-│       │   │       │   ├── route.ts    # GET insights list
-│       │   │       │   └── stream/route.ts  # SSE/WebSocket push
-│       │   │       ├── approvals/
-│       │   │       │   ├── route.ts         # GET pending actions
-│       │   │       │   └── [id]/route.ts    # POST approve/reject
-│       │   │       ├── chat/
-│       │   │       │   └── route.ts    # Streaming Claude chat endpoint
-│       │   │       ├── webhooks/
-│       │   │       │   └── shopify/route.ts # Shopify webhook receiver
-│       │   │       └── health/route.ts
-│       │   ├── components/
-│       │   │   ├── ui/             # Primitive components
-│       │   │   │   ├── button.tsx
-│       │   │   │   ├── badge.tsx
-│       │   │   │   ├── card.tsx
-│       │   │   │   ├── skeleton.tsx
-│       │   │   │   ├── dialog.tsx
-│       │   │   │   └── toast.tsx
-│       │   │   ├── charts/
-│       │   │   │   ├── MetricCard.tsx      # KPI card with delta
-│       │   │   │   ├── SpendRevenueChart.tsx
-│       │   │   │   ├── RoasChart.tsx
-│       │   │   │   ├── ChannelBreakdown.tsx
-│       │   │   │   └── ProductVelocity.tsx
-│       │   │   ├── insights/
-│       │   │   │   ├── InsightCard.tsx     # Single insight card
-│       │   │   │   ├── InsightFeed.tsx     # Live feed with WebSocket
-│       │   │   │   └── InsightDetail.tsx
-│       │   │   ├── actions/
-│       │   │   │   ├── ActionCard.tsx      # Pending action card
-│       │   │   │   ├── ApprovalDialog.tsx  # Approve/reject modal
-│       │   │   │   └── ExecutionLog.tsx    # Auto-execute history
-│       │   │   ├── chat/
-│       │   │   │   ├── ChatWindow.tsx
-│       │   │   │   ├── ToolCallTrace.tsx   # Shows tool call inline
-│       │   │   │   └── CommandInput.tsx    # Handles slash commands
-│       │   │   └── layout/
-│       │   │       ├── Shell.tsx
-│       │   │       ├── Sidebar.tsx
-│       │   │       └── Header.tsx
-│       │   ├── lib/
-│       │   │   ├── cube.ts         # Cube/Seleric API client
-│       │   │   ├── anthropic.ts    # Claude streaming client
-│       │   │   ├── db.ts           # Prisma client singleton
-│       │   │   ├── redis.ts        # Server-side Redis
-│       │   │   └── utils.ts
-│       │   ├── hooks/
-│       │   │   ├── use-insight-stream.ts
-│       │   │   ├── use-approval-queue.ts
-│       │   │   └── use-chat.ts
-│       │   └── types/
-│       │       └── index.ts        # Re-exports from packages/shared-types
-│       ├── public/
-│       ├── next.config.ts
-│       ├── tailwind.config.ts
-│       ├── tsconfig.json
-│       └── package.json
-│
-├── packages/
-│   ├── db/                         # Shared Prisma schema
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma       # All models
-│   │   │   └── migrations/
+│   ├── mcp-shopify/                    # Node.js · MCP SDK · SSE · Port 3100
 │   │   ├── src/
-│   │   │   └── client.ts           # Prisma client singleton
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   ├── shared-types/               # Shared TypeScript types
-│   │   ├── src/
-│   │   │   ├── signal.ts
-│   │   │   ├── insight.ts
-│   │   │   ├── action.ts
-│   │   │   └── index.ts
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   └── config/                     # Shared config loaders
-│       ├── src/
-│       │   └── env.ts              # Zod env schema validation
-│       ├── package.json
-│       └── tsconfig.json
+│   │   │   ├── server.ts               # MCP server entry point
+│   │   │   ├── tools/                  # get-products, get-orders, get-inventory, update-product, create-discount
+│   │   │   ├── handlers/shopify-client.ts  # Shopify Admin API wrapper
+│   │   │   └── lib/write-guard.ts      # Checks WRITE_ENABLED env var
+│   │   ├── Dockerfile
+│   │   ├── tsconfig.json
+│   │   └── package.json
+│   │
+│   └── scripts/                        # Data analysis and reconciliation scripts
+│       ├── _verify_dashboard_may.py
+│       ├── build_pnl_workbook.py
+│       ├── reconcile_cogs_pnl.py
+│       ├── reconcile_daily_pnl_audit.py
+│       ├── daily_pnl_2026_ytd.sql
+│       └── *.csv / *.xlsx              # Output data snapshots
+│
+├── packages/                           # Shared TypeScript packages (pnpm workspace)
+│   ├── db/                             # Prisma schema — single source of truth
+│   │   ├── prisma/schema.prisma        # All models (Signal, Insight, PendingAction, AuditLog)
+│   │   └── src/client.ts
+│   ├── shared-types/                   # TypeScript contracts (no runtime deps)
+│   │   └── src/                        # signal.ts, insight.ts, action.ts, index.ts
+│   ├── queue/                          # BullMQ queue abstractions
+│   │   └── index.ts
+│   └── config/                         # Zod env schema validation
+│       └── src/env.ts
 │
 ├── config/
-│   └── rules.yaml                  # Guardrail rules — editable without code changes
+│   └── rules.yaml                      # Guardrail rules — edit without code changes
 │
 ├── infra/
 │   ├── docker/
-│   │   ├── postgres/init.sql       # pgvector extension + indexes
-│   │   └── clickhouse/schema.sql   # ClickHouse table definitions
+│   │   ├── postgres/init.sql           # pgvector extension + indexes
+│   │   └── clickhouse/                 # ClickHouse table definitions
 │   ├── nginx/
-│   │   └── nginx.conf              # Production reverse proxy config
+│   │   ├── nginx.conf                  # Production reverse proxy
+│   │   └── multiagent.seleric.com.conf
 │   └── scripts/
-│       ├── setup-dev.sh            # One-command dev environment setup
-│       ├── seed-test-data.sh       # Seed ClickHouse + Postgres with test data
-│       └── check-connections.sh    # Validate all external service connections
+│       ├── setup-dev.sh                # One-command dev environment setup
+│       ├── seed-test-data.sh           # Seed ClickHouse + Postgres with test data
+│       ├── check-connections.sh        # Validate all external service connections
+│       ├── test-phase1.sh
+│       └── test-phase2.sh
 │
-├── docker-compose.yml              # Local dev: Postgres, Redis, all services
-├── docker-compose.prod.yml         # Production overrides
-├── .env.example                    # All env vars with descriptions
-├── .gitignore
-├── turbo.json                      # Turborepo pipeline config
-├── package.json                    # Root (pnpm workspace)
-├── pnpm-workspace.yaml
-└── README.md
+├── docs/                               # Architecture and reference documentation
+│   ├── rebuild/                        # Architecture audit + refactor plan
+│   ├── calculation_and_queries/        # Business calculation definitions
+│   └── *.md                            # ARCHITECTURE, DATA_FLOW, CHAT, TECH_STACK, etc.
+│
+├── .cursor/rules/                      # Cursor IDE coding rules per domain
+├── docker-compose.yml                  # Dev stack (postgres, redis, all services)
+├── docker-compose.prod.yml             # Production overrides
+├── docker-compose.override.yml
+├── Jenkinsfile                         # CI/CD: GitHub → rsync → docker compose
+├── start.ps1                           # Windows: starts orchestrator + pnpm dev
+├── start.sh                            # macOS/Linux: starts orchestrator + pnpm dev
+├── turbo.json                          # Turborepo pipeline config
+├── pnpm-workspace.yaml                 # Workspace packages: frontend, backend/worker, backend/mcp-shopify, packages/*
+├── package.json                        # Root (pnpm workspace scripts + turbo)
+├── .env.example                        # All env vars with descriptions
+└── .gitignore
 ```
 
-## Key File Responsibilities (quick reference)
+## Key File Responsibilities
 
 | File | Responsibility |
 |---|---|
-| `services/orchestrator/src/graph.py` | LangGraph StateGraph — the only place edges and nodes are wired together |
-| `services/orchestrator/src/nodes/assemble_context.py` | Redis + pgvector + Cube context fetch — single source of truth for context |
-| `services/agents/guardrail/src/classifier.py` | Guardrail rule evaluation — all classification logic here |
-| `config/rules.yaml` | Guardrail thresholds and rules — edit this to change behaviour without code |
-| `apps/web/src/app/api/chat/route.ts` | Chat endpoint — injects business context, streams Claude response |
-| `apps/web/src/app/api/approvals/[id]/route.ts` | Approval endpoint — validates token, updates status, enqueues execution |
-| `services/worker/src/jobs/execute-action.ts` | Actual MCP write call — only place production writes happen |
-| `services/worker/src/jobs/record-outcome.ts` | Outcome measurement — feeds back to signal calibration |
+| `backend/orchestrator/src/graph.py` | LangGraph StateGraph — nodes and edges wired together |
+| `backend/orchestrator/src/nodes/assemble_context.py` | Redis + pgvector + Cube context fetch |
+| `backend/agents/guardrail/src/classifier.py` | Guardrail rule evaluation — all classification logic |
+| `config/rules.yaml` | Guardrail thresholds — edit to change behaviour without code changes |
+| `frontend/src/app/api/chat/route.ts` | Chat endpoint — 3-model routing, streaming LLM response |
+| `frontend/src/app/api/approvals/[id]/route.ts` | Approval endpoint — HMAC verification, BullMQ enqueue |
+| `backend/worker/src/jobs/execute-action.ts` | Actual MCP write call — only place production writes happen |
+| `backend/worker/src/jobs/record-outcome.ts` | Outcome measurement — feeds back to signal calibration |
 | `packages/db/prisma/schema.prisma` | Single source of truth for all database models |
+| `frontend/src/lib/chat/model.ts` | 3-model resolver (data / analysis / fallback) |
+| `frontend/src/lib/services/approval.service.ts` | HMAC verification, status transitions, audit log |
