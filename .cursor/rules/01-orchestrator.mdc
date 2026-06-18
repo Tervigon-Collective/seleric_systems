@@ -1,5 +1,5 @@
 ---
-description: Apply when working in services/orchestrator — LangGraph state machine, context assembly, agent routing
+description: Apply when working in backend/orchestrator — LangGraph state machine, context assembly, agent routing
 alwaysApply: false
 ---
 # Orchestrator Service Rules

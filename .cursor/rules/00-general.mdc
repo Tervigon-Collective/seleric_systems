@@ -13,17 +13,17 @@ This is a multi-agent AI system that monitors a founder's business (Shopify + Me
 Signal fired (every 15 min) → Orchestrator (LangGraph) → Agent(s) → ActionProposal → Guardrail → AUTO execute OR Approval queue → Outcome store → Signal calibration
 
 **Services:**
-- `services/orchestrator` — Python FastAPI + LangGraph, the central brain
-- `services/agents/*` — Individual specialist agents (insight, meta, shopify, guardrail)
-- `services/worker` — BullMQ async job processor (Node.js)
-- `services/mcp-shopify` — Custom Shopify MCP server (Node.js)
-- `apps/web` — Next.js 14 App Router frontend
+- `backend/orchestrator` — Python FastAPI + LangGraph, the central brain
+- `backend/agents/*` — Individual specialist agents (insight, meta, shopify, guardrail)
+- `backend/worker` — BullMQ async job processor (Node.js)
+- `backend/mcp-shopify` — Custom Shopify MCP server (Node.js)
+- `frontend` — Next.js 14 App Router frontend
 - `packages/db` — Prisma schema + migrations
 - `packages/shared-types` — TypeScript types shared across services
 
 ## Naming conventions
 
-### Python (services/orchestrator, services/agents)
+### Python (backend/orchestrator, backend/agents)
 - Files: `snake_case.py`
 - Classes: `PascalCase`
 - Functions/variables: `snake_case`
@@ -31,7 +31,7 @@ Signal fired (every 15 min) → Orchestrator (LangGraph) → Agent(s) → Action
 - Pydantic models: suffix with `Schema` for API I/O, no suffix for internal models
 - LangGraph state keys: `snake_case` strings matching the TypedDict field name exactly
 
-### TypeScript/JavaScript (services/worker, services/mcp-shopify, apps/web)
+### TypeScript/JavaScript (backend/worker, backend/mcp-shopify, frontend)
 - Files: `kebab-case.ts` for utilities/lib, `PascalCase.tsx` for React components
 - Variables/functions: `camelCase`
 - Types/interfaces: `PascalCase`, prefix interfaces with `I` only when needed to disambiguate

@@ -1,6 +1,6 @@
 ---
 description: Apply when working with databases — ClickHouse, Postgres/pgvector, Redis
-globs: ["packages/db/**/*", "services/orchestrator/src/memory/**/*.py", "services/worker/src/**/*.ts", "apps/web/src/lib/db.ts"]
+globs: ["packages/db/**/*", "backend/orchestrator/src/memory/**/*.py", "backend/worker/src/**/*.ts", "frontend/src/lib/prisma.ts"]
 alwaysApply: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: Apply when working on MCP server implementations or MCP tool calls
-globs: ["services/mcp-shopify/**/*.ts", "services/orchestrator/src/tools/**/*.py", "services/agents/**/tools.py"]
+globs: ["backend/mcp-shopify/**/*.ts", "backend/orchestrator/src/tools/**/*.py", "backend/agents/**/tools.py"]
 alwaysApply: false
 ---
 

@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════════════════════
 
 # ── Generated files ───────────────────────────────────────
-apps/web/src/generated/
+frontend/src/generated/
 
 # ── Environment & secrets ─────────────────────────────────
 .env
@@ -51,7 +51,7 @@ out/
 dist/
 .turbo/
 *.tsbuildinfo
-apps/web/next-env.d.ts
+frontend/next-env.d.ts
 .vercel/
 .swc/
 

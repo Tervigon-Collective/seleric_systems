@@ -82,10 +82,10 @@ Opens:
 
 ### Adding a new agent
 
-1. Create `services/agents/{name}/src/agent.py` implementing `run(context) -> AgentResult`
-2. Add the agent name to `SIGNAL_AGENT_MAP` in `services/orchestrator/src/nodes/route_agents.py`
+1. Create `backend/agents/{name}/src/agent.py` implementing `run(context) -> AgentResult`
+2. Add the agent name to `SIGNAL_AGENT_MAP` in `backend/orchestrator/src/nodes/route_agents.py`
 3. Add display handling in the frontend `InsightCard` or `ActionCard` components
-4. Write tests in `services/agents/{name}/tests/`
+4. Write tests in `backend/agents/{name}/tests/`
 
 ### Adding a new signal type
 
@@ -111,20 +111,21 @@ WRITE_ENABLED=true
 ## Project Structure
 
 ```
-.cursor/rules/       → Cursor AI rules for each service domain
-docs/                → Architecture, data flow, tech stack, requirements
-services/
+frontend/            → Next.js 14 App Router
+backend/
   orchestrator/      → Python FastAPI + LangGraph
   agents/            → Insight, Meta, Shopify, Guardrail agent modules
   worker/            → BullMQ async job processor
   mcp-shopify/       → Custom Shopify MCP server
-apps/web/            → Next.js 14 frontend
+  scripts/           → Data analysis + reconciliation scripts
 packages/
   db/                → Prisma schema + client
   shared-types/      → TypeScript types across services
 config/
   rules.yaml         → Guardrail rules (edit without code changes)
 infra/               → Docker, Postgres init, setup scripts
+docs/                → Architecture, data flow, tech stack, requirements
+.cursor/rules/       → Cursor AI rules for each service domain
 ```
 
 Full folder reference: [docs/FOLDER_STRUCTURE.md](docs/FOLDER_STRUCTURE.md)
