@@ -20,9 +20,52 @@ export type AttributionChannel = "all" | "meta" | "google" | "organic"
 
 export type { CampaignAdRow, CampaignAdSkuRow }
 
+export interface MetaPlatformRow {
+  publisher_platform: string
+  spend: number
+  impressions: number
+  clicks: number
+  purchases: number
+}
+
+export interface MetaPlacementRow {
+  publisher_platform: string
+  platform_position: string
+  spend: number
+  impressions: number
+  clicks: number
+  purchases: number
+}
+
+export interface GoogleNetworkRow {
+  network: string
+  spend: number
+  impressions: number
+  clicks: number
+  conversions: number
+  roas: number
+}
+
+export interface GoogleDeviceRow {
+  device: string
+  spend: number
+  impressions: number
+  clicks: number
+  conversions: number
+  roas: number
+}
+
+export interface SubChannelData {
+  metaPlatform: MetaPlatformRow[]
+  metaPlacement: MetaPlacementRow[]
+  googleNetwork: GoogleNetworkRow[]
+  googleDevice: GoogleDeviceRow[]
+}
+
 export interface AttributionChannelData {
   channelPnl: CubeRow[]
   direct: AttributionDirectData
+  subChannel: SubChannelData
 }
 
 export interface AttributionCampaignData {
@@ -43,11 +86,130 @@ function platformFilter(channel: AttributionChannel) {
   return [{ member: "order_attribution.lt_platform", operator: "equals", values: [channel] }]
 }
 
+async function fetchSubChannelData(
+  range: DashboardDateRange,
+  brand: DashboardBrandFilter,
+): Promise<SubChannelData> {
+  return runDashboardCubeFetch(async () => {
+    const [metaPlatformRaw, metaPlacementRaw, googleNetworkRaw, googleDeviceRaw] = await Promise.all([
+      safeCubeQuery(
+        q("meta_ad_breakdown", brand, {
+          dimensions: ["meta_ad_breakdown.publisher_platform"],
+          measures: [
+            "meta_ad_breakdown.spend",
+            "meta_ad_breakdown.impressions",
+            "meta_ad_breakdown.clicks",
+            "meta_ad_breakdown.purchases",
+          ],
+          timeDimensions: [td("meta_ad_breakdown.report_date", range)],
+          filters: [{ member: "meta_ad_breakdown.breakdown_type", operator: "equals", values: ["publisher_platform"] }],
+          order: { "meta_ad_breakdown.spend": "desc" },
+          limit: 20,
+        }),
+        "metaPlatform"
+      ),
+      safeCubeQuery(
+        q("meta_ad_breakdown", brand, {
+          dimensions: ["meta_ad_breakdown.publisher_platform", "meta_ad_breakdown.platform_position"],
+          measures: [
+            "meta_ad_breakdown.spend",
+            "meta_ad_breakdown.impressions",
+            "meta_ad_breakdown.clicks",
+            "meta_ad_breakdown.purchases",
+          ],
+          timeDimensions: [td("meta_ad_breakdown.report_date", range)],
+          filters: [{ member: "meta_ad_breakdown.breakdown_type", operator: "equals", values: ["placement"] }],
+          order: { "meta_ad_breakdown.spend": "desc" },
+          limit: 50,
+        }),
+        "metaPlacement"
+      ),
+      safeCubeQuery(
+        q("google_ad_performance", brand, {
+          dimensions: ["google_ad_performance.segment_ad_network_type"],
+          measures: [
+            "google_ad_performance.spend",
+            "google_ad_performance.impressions",
+            "google_ad_performance.clicks",
+            "google_ad_performance.conversions",
+            "google_ad_performance.roas",
+          ],
+          timeDimensions: [td("google_ad_performance.report_date", range)],
+          order: { "google_ad_performance.spend": "desc" },
+          limit: 20,
+        }),
+        "googleNetwork"
+      ),
+      safeCubeQuery(
+        q("google_ad_performance", brand, {
+          dimensions: ["google_ad_performance.segment_device"],
+          measures: [
+            "google_ad_performance.spend",
+            "google_ad_performance.impressions",
+            "google_ad_performance.clicks",
+            "google_ad_performance.conversions",
+            "google_ad_performance.roas",
+          ],
+          timeDimensions: [td("google_ad_performance.report_date", range)],
+          order: { "google_ad_performance.spend": "desc" },
+          limit: 20,
+        }),
+        "googleDevice"
+      ),
+    ])
+
+    const metaPlatform: MetaPlatformRow[] = metaPlatformRaw
+      .filter((r) => Number(r["meta_ad_breakdown.spend"] ?? 0) > 0)
+      .map((r) => ({
+        publisher_platform: String(r["meta_ad_breakdown.publisher_platform"] ?? "unknown"),
+        spend: Number(r["meta_ad_breakdown.spend"] ?? 0),
+        impressions: Number(r["meta_ad_breakdown.impressions"] ?? 0),
+        clicks: Number(r["meta_ad_breakdown.clicks"] ?? 0),
+        purchases: Number(r["meta_ad_breakdown.purchases"] ?? 0),
+      }))
+
+    const metaPlacement: MetaPlacementRow[] = metaPlacementRaw
+      .filter((r) => Number(r["meta_ad_breakdown.spend"] ?? 0) > 0)
+      .map((r) => ({
+        publisher_platform: String(r["meta_ad_breakdown.publisher_platform"] ?? "unknown"),
+        platform_position: String(r["meta_ad_breakdown.platform_position"] ?? "unknown"),
+        spend: Number(r["meta_ad_breakdown.spend"] ?? 0),
+        impressions: Number(r["meta_ad_breakdown.impressions"] ?? 0),
+        clicks: Number(r["meta_ad_breakdown.clicks"] ?? 0),
+        purchases: Number(r["meta_ad_breakdown.purchases"] ?? 0),
+      }))
+
+    const googleNetwork: GoogleNetworkRow[] = googleNetworkRaw
+      .filter((r) => Number(r["google_ad_performance.spend"] ?? 0) > 0)
+      .map((r) => ({
+        network: String(r["google_ad_performance.segment_ad_network_type"] ?? "unknown"),
+        spend: Number(r["google_ad_performance.spend"] ?? 0),
+        impressions: Number(r["google_ad_performance.impressions"] ?? 0),
+        clicks: Number(r["google_ad_performance.clicks"] ?? 0),
+        conversions: Number(r["google_ad_performance.conversions"] ?? 0),
+        roas: Number(r["google_ad_performance.roas"] ?? 0),
+      }))
+
+    const googleDevice: GoogleDeviceRow[] = googleDeviceRaw
+      .filter((r) => Number(r["google_ad_performance.spend"] ?? 0) > 0)
+      .map((r) => ({
+        device: String(r["google_ad_performance.segment_device"] ?? "unknown"),
+        spend: Number(r["google_ad_performance.spend"] ?? 0),
+        impressions: Number(r["google_ad_performance.impressions"] ?? 0),
+        clicks: Number(r["google_ad_performance.clicks"] ?? 0),
+        conversions: Number(r["google_ad_performance.conversions"] ?? 0),
+        roas: Number(r["google_ad_performance.roas"] ?? 0),
+      }))
+
+    return { metaPlatform, metaPlacement, googleNetwork, googleDevice }
+  })
+}
+
 export async function fetchAttributionChannel(
   range: DashboardDateRange,
   brand: DashboardBrandFilter
 ): Promise<AttributionChannelData> {
-  const [channelPnl, direct] = await Promise.all([
+  const [channelPnl, direct, subChannel] = await Promise.all([
     // Cube only for net_profit per channel (requires COGS allocation not in raw tables)
     runDashboardCubeFetch(() =>
       safeCubeQuery(
@@ -65,8 +227,9 @@ export async function fetchAttributionChannel(
     ),
     // Direct ClickHouse for everything else (orders, revenue, spend, trend)
     fetchAttributionDirect(range, brand),
+    fetchSubChannelData(range, brand),
   ])
-  return { channelPnl, direct }
+  return { channelPnl, direct, subChannel }
 }
 
 export async function fetchAttributionCampaigns(
