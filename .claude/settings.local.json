@@ -60,7 +60,10 @@
       "Bash(docker version *)",
       "PowerShell(pnpm dev -- --ui=stream)",
       "Skill(claude-api)",
-      "Skill(claude-api:*)"
+      "Skill(claude-api:*)",
+      "mcp__claude_ai_Seleric-serve__cube_schema_catalog",
+      "mcp__claude_ai_Seleric-serve__cube_meta_ads_breakdown",
+      "mcp__claude_ai_Seleric-serve__cube_google_ads"
     ]
   }
 }

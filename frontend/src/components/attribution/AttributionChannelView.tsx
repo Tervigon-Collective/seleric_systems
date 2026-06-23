@@ -4,6 +4,7 @@ import { StackedBarChart } from "@/components/charts/StackedBarChart"
 import { fmtCurrency, fmtCount } from "@/components/charts/format"
 import type { AttributionChannelData } from "@/lib/dashboard/queries/attribution"
 import type { DashboardSearchParams } from "@/lib/dashboard/date-ranges"
+import { AttributionSubChannelBreakdown } from "./AttributionSubChannelBreakdown"
 
 interface Props {
   data: AttributionChannelData
@@ -118,7 +119,7 @@ function ChannelSummaryTable({
 }
 
 export function AttributionChannelView({ data, searchParams }: Props) {
-  const { channelPnl, direct } = data
+  const { channelPnl, direct, subChannel } = data
   const { totalOrders, metaSpend, googleSpend, platforms, trend } = direct
 
   // Net profit per channel from Cube channel_pnl (requires COGS allocation)
@@ -301,6 +302,15 @@ export function AttributionChannelView({ data, searchParams }: Props) {
           />
         </ChartCard>
       </div>
+
+      {subChannel && (
+        <AttributionSubChannelBreakdown
+          metaPlatform={subChannel.metaPlatform}
+          metaPlacement={subChannel.metaPlacement}
+          googleNetwork={subChannel.googleNetwork}
+          googleDevice={subChannel.googleDevice}
+        />
+      )}
     </div>
   )
 }
