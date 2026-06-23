@@ -13,6 +13,7 @@ const links = [
   { href: "/ads", label: "Ads" },
   { href: "/attribution", label: "Attribution" },
   { href: "/ads/neurotag", label: "Creative IQ" },
+  { href: "/geo-allocation", label: "Geo Allocation" },
   { href: "/shopify", label: "Shopify" },
   { href: "/chat", label: "Chat" },
   { href: "/control", label: "Control" },

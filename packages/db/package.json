@@ -10,14 +10,15 @@
   "scripts": {
     "build": "prisma generate",
     "generate": "prisma generate",
-    "migrate:dev": "prisma migrate dev",
-    "studio": "prisma studio",
+    "migrate:dev": "dotenv -e ../../.env -e ../../.env.local -- prisma migrate dev",
+    "studio": "dotenv -e ../../.env -e ../../.env.local -- prisma studio",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0"
   },
   "devDependencies": {
+    "dotenv-cli": "^7.4.2",
     "prisma": "^5.18.0",
     "typescript": "^5.5.0"
   }

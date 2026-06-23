@@ -1,0 +1,214 @@
+﻿season,product_name,sku,variant,price_inr,compare_at_price_inr,stock_quantity,stock_status,can_advertise,cogs_per_item_inr,gross_margin_pct,gross_margin_per_unit_inr,total_variable_cost_inr,shipping_cost_inr,packaging_cost_inr,payment_gateway_fee_inr,rto_inr,data_source_date
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-S,Blue / S,1999,,18,LOW,MONITOR,340,79.93,1659,658.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-M,Blue / M,1999,,19,LOW,MONITOR,360,78.75,1639,678.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-L,Blue / L,1999,,19,LOW,MONITOR,380,77.57,1619,698.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-XL,Blue / XL,1999,,18,LOW,MONITOR,400,76.39,1599,718.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-XXL,Blue / 2XL,1999,,20,LOW,MONITOR,420,75.21,1579,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-XXXL,Blue / 3XL,1999,,20,LOW,MONITOR,440,74.03,1559,758.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-XXXXL,Blue / 4XL,1999,,17,LOW,MONITOR,460,72.85,1539,778.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BLUE-XXXXXL,Blue / 5XL,1999,,18,LOW,MONITOR,480,71.67,1519,798.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-S,Brown / S,1999,,20,LOW,MONITOR,340,79.93,1659,658.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-M,Brown / M,1999,,20,LOW,MONITOR,360,78.75,1639,678.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-L,Brown / L,1999,,19,LOW,MONITOR,380,77.57,1619,698.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-XL,Brown / XL,1999,,19,LOW,MONITOR,400,76.39,1599,718.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-XXL,Brown / 2XL,1999,,20,LOW,MONITOR,420,75.21,1579,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-XXXL,Brown / 3XL,1999,,20,LOW,MONITOR,440,74.03,1559,758.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-XXXXL,Brown / 4XL,1999,,20,LOW,MONITOR,460,72.85,1539,778.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-BROWN-XXXXXL,Brown / 5XL,1999,,20,LOW,MONITOR,480,71.67,1519,798.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-S,Green / S,1999,,20,LOW,MONITOR,340,79.93,1659,658.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-M,Green / M,1999,,20,LOW,MONITOR,360,78.75,1639,678.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-L,Green / L,1999,,20,LOW,MONITOR,380,77.57,1619,698.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-XL,Green / XL,1999,,20,LOW,MONITOR,400,76.39,1599,718.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-XXL,Green / 2XL,1999,,19,LOW,MONITOR,420,75.21,1579,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-XXXL,Green / 3XL,1999,,20,LOW,MONITOR,440,74.03,1559,758.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-XXXXL,Green / 4XL,1999,,20,LOW,MONITOR,460,72.85,1539,778.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-GREEN-XXXXXL,Green / 5XL,1999,,20,LOW,MONITOR,480,71.67,1519,798.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-S,Orange / S,1999,,20,LOW,MONITOR,340,79.93,1659,658.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-M,Orange / M,1999,,20,LOW,MONITOR,360,78.75,1639,678.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-L,Orange / L,1999,,20,LOW,MONITOR,380,77.57,1619,698.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-XL,Orange / XL,1999,,19,LOW,MONITOR,400,76.39,1599,718.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-XXL,Orange / 2XL,1999,,19,LOW,MONITOR,420,75.21,1579,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-XXXL,Orange / 3XL,1999,,16,LOW,MONITOR,440,74.03,1559,758.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-XXXXL,Orange / 4XL,1999,,19,LOW,MONITOR,460,72.85,1539,778.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-ORANGE-XXXXXL,Orange / 5XL,1999,,20,LOW,MONITOR,480,71.67,1519,798.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-S,Yellow / S,1999,,20,LOW,MONITOR,340,79.93,1659,658.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-M,Yellow / M,1999,,19,LOW,MONITOR,360,78.75,1639,678.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-L,Yellow / L,1999,,19,LOW,MONITOR,380,77.57,1619,698.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-XL,Yellow / XL,1999,,20,LOW,MONITOR,400,76.39,1599,718.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-XXL,Yellow / 2XL,1999,,20,LOW,MONITOR,420,75.21,1579,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-XXXL,Yellow / 3XL,1999,,20,LOW,MONITOR,440,74.03,1559,758.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-XXXXL,Yellow / 4XL,1999,,20,LOW,MONITOR,460,72.85,1539,778.98,117,10,74.98,117,2026-06-19
+Monsoon,Rover Raincoat,TH-372-ROVERAINCOAT-YELLOW-XXXXXL,Yellow / 5XL,1999,,18,LOW,MONITOR,480,71.67,1519,798.98,117,10,74.98,117,2026-06-19
+Monsoon,DrizzleCape,TH-058-CAPE-XS,XS,1999,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-S,S,2199,,4,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-M,M,2299,,4,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-L,L,2499,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-XL,XL,2499,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-XXL,XXL,2699,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,DrizzleCape,TH-058-CAPE-XXXL,XXXL,2899,,3,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-XS,XS,2499,,96,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-S,S,2499,,95,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-M,M,2499,,83,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-L,L,2499,,72,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-XL,XL,2499,,66,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-XXL,XXL,2499,,53,OK,YES,,,,,,,,,
+Monsoon,StormGuard Jacket,TH-053-COAT-XXXL,XXXL,2499,,48,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-S,S,1999,,500,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-M,M,1999,,500,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-L,L,1999,,499,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-XL,XL,1999,,499,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-2XL,2XL,1999,,500,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-3XL,3XL,1999,,500,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-4XL,4XL,1999,,500,OK,YES,,,,,,,,,
+Monsoon,ZephyrLite Vest,TH-096-VEST-5XL,5XL,1999,,500,OK,YES,,,,,,,,,
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-XS-BLUE,Blue / XS,2499,,95,OK,YES,420,80.17,2079,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-XS-MAROON,Maroon / XS,2499,,79,OK,YES,420,80.17,2079,738.98,117,10,74.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-S-BLUE,Blue / S,2499,,95,OK,YES,440,79.22,2059,761.48,117,10,77.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-S-MAROON,Maroon / S,2499,,90,OK,YES,440,79.22,2059,761.48,117,10,77.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-M-BLUE,Blue / M,2499,,95,OK,YES,440,79.22,2059,763.98,117,10,79.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-M-MAROON,Maroon / M,2499,,85,OK,YES,440,79.22,2059,763.98,117,10,79.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-L-BLUE,Blue / L,2499,,92,OK,YES,460,78.28,2039,786.48,117,10,82.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-L-MAROON,Maroon / L,2499,,91,OK,YES,460,78.28,2039,786.48,117,10,82.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-XL-BLUE,Blue / XL,2499,,94,OK,YES,460,78.28,2039,788.98,117,10,84.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-XL-MAROON,Maroon / XL,2499,,89,OK,YES,460,78.28,2039,788.98,117,10,84.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-2XL-BLUE,Blue / 2XL,2499,,97,OK,YES,480,77.33,2019,811.48,117,10,87.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-2XL-MAROON,Maroon / 2XL,2499,,91,OK,YES,480,77.33,2019,811.48,117,10,87.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-3XL-BLUE,Blue / 3XL,2499,,96,OK,YES,480,77.33,2019,813.98,117,10,89.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-3XL-MAROON,Maroon / 3XL,2499,,95,OK,YES,480,77.33,2019,813.98,117,10,89.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-4XL-BLUE,Blue / 4XL,2499,,68,OK,YES,500,76.39,1999,836.48,117,10,92.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-4XL-MAROON,Maroon / 4XL,2499,,55,OK,YES,500,76.39,1999,836.48,117,10,92.48,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-5XL-BLUE,Blue / 5XL,2499,,91,OK,YES,520,75.45,1979,858.98,117,10,94.98,117,2026-06-19
+Monsoon,Pawveralls Suspender Boots,TH-383-SUSPENDER-5XL-MAROON,Maroon / 5XL,2499,,89,OK,YES,520,75.45,1979,858.98,117,10,94.98,117,2026-06-19
+Monsoon,WildTrail Boots,TH-068-WILD-S,S,1999,,182,OK,YES,455.08,73.14,1543.92,761.56,117,10,62.48,117,2026-06-19
+Monsoon,WildTrail Boots,TH-068-WILD-M,M,1999,,310,OK,YES,489.83,71.09,1509.17,796.31,117,10,62.48,117,2026-06-19
+Monsoon,WildTrail Boots,TH-068-WILD-L,L,1999,,219,OK,YES,510.17,69.88,1488.83,816.65,117,10,62.48,117,2026-06-19
+Monsoon,WildTrail Boots,TH-068-WILD-XL,XL,2499,,297,OK,YES,,,,,,,,,
+Monsoon,WildTrail Boots,TH-068-WILD-XXL,XXL,2499,,174,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-XS,XS,2999,,74,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-S,S,2999,,66,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-M,M,2999,,62,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-L,L,2999,,68,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-XL,XL,2999,,41,OK,YES,,,,,,,,,
+Monsoon,TenderTrek Silicone Boots,TH-063-SILBOO-XXL,XXL,2999,,25,LOW,MONITOR,,,,,,,,,
+Monsoon,Paw Cleanser 500ml,TH-013-PAWCLESH-S,500ml / S,899,,1905,OK,YES,,,,,,,,,
+Monsoon,Paw Cleanser 500ml,TH-013-PAWCLESH-L,500ml / L,899,,1851,OK,YES,,,,,,,,,
+Monsoon,PawTech Cleaner (Electric),TH-336-PAWTECH-BLUE,Blue,2499,,18,LOW,MONITOR,579.66,72.63,1919.34,898.64,117,10,74.98,117,2026-06-19
+Monsoon,PawTech Cleaner (Electric),TH-336-PAWTECH-GRAY,Gray,2499,,2,CRITICAL_LOW,PAUSE_OR_RESTOCK,579.66,72.63,1919.34,898.64,117,10,74.98,117,2026-06-19
+Monsoon,Daily Pet Wipes,TH-010-PETWIP,Default,499,,1959,OK,YES,,,,,,,,,
+Monsoon,Tick & Flea Shampoo,TH-004-TNFSH,Default,919,,979,OK,YES,,,,,,,,,
+Monsoon,Skin Microbiome Shampoo,TH-002-SKMISH,Default,919,,883,OK,YES,,,,,,,,,
+Monsoon,Neem & Tea Tree Oil Shampoo,TH-003-NTTOSH,Default,919,,965,OK,YES,,,,,,,,,
+Monsoon,FurSplash Glove + T&F Shampoo Bundle,TH-059-SPLASH,Default,1999,,988,OK,YES,,,,,,,,,
+Monsoon,BathEase Brush + T&F Shampoo Bundle,TH-BATHEASE,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Monsoon,No-Rinse Hygiene Spray,TH-088-HYGIENESPRAY,Default,599,,953,OK,YES,,,,,,,,,
+Monsoon,Aloe Fresh Deodorant,TH-080-ALOEDEO,Default,899,,941,OK,YES,,,,,,,,,
+Monsoon,Paw Balm - Triple Butter,TH-PAWBALM,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Monsoon,Snout Guard,TH-033-SNOG-S,S,799,,49,OK,YES,,,,,,,,,
+Monsoon,PupTidy Poop Bags,TH-046-PTBAG,Default,599,,995,OK,YES,,,,,,,,,
+Monsoon,PoopScoop Buddy,TH-066-SCOOP,Default,1499,,941,OK,YES,,,,,,,,,
+Summer,SummerSoothe Cooling Mat,TH-071-SUMMERMAT,Default,2499,,0,OOS,NO,,,,,,,,,
+Summer,LumenPool Cooling Water Bed,TH-101-LUMENPOOL,Default,2499,,157,OK,YES,,,,,,,,,
+Summer,SummerGuard Cooling Vest,TH-SUMMERGUARD,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Summer,SnugSole Boots,TH-012-SNUGBOO-XS,XS,1999,,309,OK,YES,496.61,70.69,1502.39,815.59,117,10,74.98,117,2026-06-19
+Summer,SnugSole Boots,TH-012-SNUGBOO-S,S,1999,,77,OK,YES,532.2,68.58,1466.8,851.18,117,10,74.98,117,2026-06-19
+Summer,SnugSole Boots,TH-012-SNUGBOO-M,M,2199,,916,OK,YES,566.95,69.58,1632.05,885.93,117,10,74.98,117,2026-06-19
+Summer,SnugSole Boots,TH-012-SNUGBOO-L,L,2199,,933,OK,YES,601.69,67.71,1597.31,920.67,117,10,74.98,117,2026-06-19
+Summer,SnugSole Boots,TH-012-SNUGBOO-XL,XL,2499,,893,OK,YES,637.29,69.91,1861.71,956.27,117,10,74.98,117,2026-06-19
+Summer,SnugSole Boots,TH-012-SNUGBOO-XXL,XXL,2499,,50,OK,YES,665.25,68.59,1833.75,984.23,117,10,74.98,117,2026-06-19
+Summer,AlphaView Pet Shades,TH-ALPHASHADES,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Summer,SipMate Water Bottle,TH-016-SIPBOT-S,300ml,1099,,2,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Summer,SipMate Water Bottle,TH-016-SIPBOT-M,500ml,1099,,905,OK,YES,,,,,,,,,
+Summer,SipEase Pot,TH-067-SIPEASE,Default,1099,,980,OK,YES,,,,,,,,,
+Summer,SpillGuard Bowl,TH-083-SPILLGUARD,Default,999,,30,LOW,MONITOR,,,,,,,,,
+Summer,SmartSip Fountain (Cats),TH-073-SMARTSIP,Default,2499,,899,OK,YES,,,,,,,,,
+Summer,CalmQuench Fountain + Feeder,TH-098-CALMQUENCH,Default,3499,,984,OK,YES,,,,,,,,,
+Summer,Aqua Care Shower,TH-005-AQCASHO,Default,799,,4,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+Summer,LumiRinse Spa Shower,TH-LUMIRINSE,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Summer,Therapeutic Aromatherapy Shampoo,TH-001-THARSH,Default,919,,957,OK,YES,,,,,,,,,
+Summer,Complete Care Shampoo,TH-028-COMCARE,Default,2999,,98,OK,YES,,,,,,,,,
+Summer,Herbal Coat Therapy Oil,TH-091-THERAPYOIL,Default,599,,985,OK,YES,,,,,,,,,
+Winter,WildTrail Boots,TH-068-WILD-S,S,1999,,182,OK,YES,455.08,73.14,1543.92,761.56,117,10,62.48,117,2026-06-19
+Winter,WildTrail Boots,TH-068-WILD-M,M,1999,,310,OK,YES,489.83,71.09,1509.17,796.31,117,10,62.48,117,2026-06-19
+Winter,WildTrail Boots,TH-068-WILD-L,L,1999,,219,OK,YES,510.17,69.88,1488.83,816.65,117,10,62.48,117,2026-06-19
+Winter,WildTrail Boots,TH-068-WILD-XL,XL,2499,,297,OK,YES,,,,,,,,,
+Winter,WildTrail Boots,TH-068-WILD-XXL,XXL,2499,,174,OK,YES,,,,,,,,,
+Winter,CloudStep Shoes,TH-CLOUDSTEP,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Winter,DenimDrip Boots,TH-DENIMDRIP,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Winter,BlueJay Sneaks,TH-BLUEJAY,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Winter,CozyClaus Boots,TH-COZYCLAUS,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Winter,NapDen Donut Bed,TH-075-NAPDEN-S,S,1999,,18,LOW,MONITOR,,,,,,,,,
+Winter,NapDen Donut Bed,TH-075-NAPDEN-M,M,2499,,14,LOW,MONITOR,,,,,,,,,
+Winter,NapDen Donut Bed,TH-075-NAPDEN-L,L,2999,,11,LOW,MONITOR,,,,,,,,,
+Winter,ComfortCrib Cat Cave,TH-085-COMFORTCRIB-BLACK-S,Black / S,2999,,494,OK,YES,,,,,,,,,
+Winter,ComfortCrib Cat Cave,TH-085-COMFORTCRIB-BLACK-L,Black / L,3499,,483,OK,YES,,,,,,,,,
+Winter,ComfortCrib Cat Cave,TH-085-COMFORTCRIB-GRAY-S,Gray / S,2999,,0,OOS,NO,,,,,,,,,
+Winter,ComfortCrib Cat Cave,TH-085-COMFORTCRIB-GRAY-L,Gray / L,3499,,0,OOS,NO,,,,,,,,,
+Winter,Dreamscape Cat Cave,TH-089-CATCAVE-S,S,2199,,73,OK,YES,,,,,,,,,
+Winter,Dreamscape Cat Cave,TH-089-CATCAVE-L,L,2499,,0,OOS,NO,,,,,,,,,
+Winter,Meow Cave,TH-095-MEOWCAVED,Default,4499,,90,OK,YES,,,,,,,,,
+Winter,SnugBug Hut,TH-104-SNUGBUG-R,Red,2999,,89,OK,YES,,,,,,,,,
+Winter,SnugBug Hut,TH-104-SNUGBUG-B,Blue,2999,,0,OOS,NO,,,,,,,,,
+Winter,CamoLuxe Sofa Bed,TH-081-CAMOLUXE-S,S,4999,,100,OK,YES,,,,,,,,,
+Winter,CamoLuxe Sofa Bed,TH-081-CAMOLUXE-M,M,4999,,100,OK,YES,,,,,,,,,
+Winter,CamoLuxe Sofa Bed,TH-081-CAMOLUXE-L,L,5499,,100,OK,YES,,,,,,,,,
+Winter,Herbal Blend Coat Conditioner,TH-090-CONDITIONER,Default,899,,977,OK,YES,,,,,,,,,
+Winter,Paw Balm - Triple Butter,TH-PAWBALM,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+Winter,Ear Care Solution,TH-109-EARSOLUTION,Default,599,,970,OK,YES,,,,,,,,,
+Winter,Herbal Coat Therapy Oil,TH-091-THERAPYOIL,Default,599,,985,OK,YES,,,,,,,,,
+All Seasons,Flexibristle Brush,TH-006-FLEBRU,Default,499,,915,OK,YES,,,,,,,,,
+All Seasons,GroomEase Glove,TH-044-GREAGLO,Default,699,,953,OK,YES,,,,,,,,,
+All Seasons,PalmPerfect Gloves,TH-011-PPGLO,Default,599,,978,OK,YES,,,,,,,,,
+All Seasons,Furease Glove,TH-009-FURGLO,Default,999,,974,OK,YES,,,,,,,,,
+All Seasons,FurEase Click Brush,TH-008-CLIBRU,Default,599,,664,OK,YES,,,,,,,,,
+All Seasons,FluffMist Pet Brush,TH-037-MISTBRU,Default,999,,975,OK,YES,,,,,,,,,
+All Seasons,Shedaway Comb,TH-034-SHEDCO-M,M,599,,990,OK,YES,,,,,,,,,
+All Seasons,Shedaway Comb,TH-034-SHEDCO-L,L,599,,994,OK,YES,,,,,,,,,
+All Seasons,DualGroom Click Brush,TH-094-DUALGROOM,Default,1499,,3,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+All Seasons,AuraSwipe Lint Brush,TH-077-AURASWIPE,Default,899,,984,OK,YES,,,,,,,,,
+All Seasons,FurAway Roller,TH-007-FROLL,Default,899,,991,OK,YES,,,,,,,,,
+All Seasons,FurAway Luxe Roller,TH-035-FURLUXE,Default,999,,971,OK,YES,,,,,,,,,
+All Seasons,All Rounder Grooming Kit,TH-039-ALLGRO,Default,2999,,990,OK,YES,,,,,,,,,
+All Seasons,TrimEase Paw Trimmer,TH-038-PAWTR,Default,1499,,813,OK,YES,,,,,,,,,
+All Seasons,Trimzy Nail Cutter & Filer,TH-018-NAICUTFIL,Default,1299,,990,OK,YES,,,,,,,,,
+All Seasons,EarEase Pet Swabs,TH-EARSWABS,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,MistCalm Brush,TH-287-MISTCALMBRUSH,Default,1299,,71,OK,YES,211.86,80.75,1087.14,505.84,117,10,49.98,117,2026-06-19
+All Seasons,MindfulMunch Bowl,TH-015-MBOW,Default,999,,966,OK,YES,,,,,,,,,
+All Seasons,ZenLick Dog Food Mat,TH-051-LICKMAT,Default,799,,965,OK,YES,,,,,,,,,
+All Seasons,TreatMaze Feeder,TH-040-MAZE,Default,1499,,983,OK,YES,,,,,,,,,
+All Seasons,Chewzilla Ball,TH-055-CHEWBALL,Default,1499,,76,OK,YES,,,,,,,,,
+All Seasons,NibblePlay Feeder Cat Toy,TH-048-PLAYFEEDER,Default,699,,0,OOS,NO,,,,,,,,,
+All Seasons,DuckDash Treat Toy,TH-385-DUCKTOY,Default,999,,31,OK,YES,250,70.47,749,526,117,10,32,117,2026-06-19
+All Seasons,FeedSync Pro Auto Feeder,TH-082-FEEDSYNC,Default,5999,,83,OK,YES,,,,,,,,,
+All Seasons,CatServe 2-in-1 Feeder,TH-069-CATFEED,Default,1999,,3,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+All Seasons,GripEase Freedom Leash,TH-076-GRIPEASE,Default,2499,,953,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BROWN-M,Brown / M,2999,,51,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BROWN-L,Brown / L,3099,,50,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BROWN-XL,Brown / XL,3299,,50,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BLACK-M,Black / M,2999,,88,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BLACK-L,Black / L,3099,,88,OK,YES,,,,,,,,,
+All Seasons,K9 Harness,TH-103-K9HARNESS-BLACK-XL,Black / XL,3299,,88,OK,YES,,,,,,,,,
+All Seasons,Oathkeeper Spike Harness,TH-099-OATHKEEPER,Default,1699,,42,OK,YES,530,63.19,1169,836.48,117,10,62.48,117,2026-06-19
+All Seasons,Stormborn Harness,TH-264-STORMBORNHARNESS,Default,2499,,97,OK,YES,879.66,58.46,1619.34,1236.14,117,10,112.48,117,2026-06-19
+All Seasons,TangleGuard Leash,TH-152-TANGLELEASH-BLACK,Black,2149,,85,OK,YES,1016.95,44.16,1132.05,1437.93,168,10,74.98,168,2026-06-19
+All Seasons,TangleGuard Leash,TH-152-TANGLELEASH-RED,Red,2149,,0,OOS,NO,1016.95,44.16,1132.05,1437.93,168,10,74.98,168,2026-06-19
+All Seasons,Snout Guard Pro,TH-SNOUTGUARDPRO,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,Wander Whiskers Carrier,TH-093-WANDERWHISKER,Default,3999,,985,OK,YES,,,,,,,,,
+All Seasons,AeroPod Carrier,TH-072-AEROPOD-GRAY,Gray,2999,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,500,80.33,2499,1184.98,300,10,74.98,300,2026-06-19
+All Seasons,AeroPod Carrier,TH-072-AEROPOD-PINK,Pink,2999,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,AeroPod Carrier,TH-072-AEROPOD-BEIGE,Beige,2999,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,PocketPup Tote,TH-054-TOTE-Y,Yellow,1499,,9,LOW,MONITOR,450,64.58,1049,756.48,117,10,62.48,117,2026-06-19
+All Seasons,PocketPup Tote,TH-054-TOTE-G,Green,1499,,5,CRITICAL_LOW,PAUSE_OR_RESTOCK,450,64.58,1049,756.48,117,10,62.48,117,2026-06-19
+All Seasons,PocketPup Tote,TH-054-TOTE-O,Orange,1499,,66,OK,YES,450,64.58,1049,756.48,117,10,62.48,117,2026-06-19
+All Seasons,Halo Pet Carrier,TH-HALOC,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,Mr. Pet Carrier Bag,TH-MRPET,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,PupNestle Crate,TH-074-PUPNESTLE,Default,2499,,1996,OK,YES,,,,,,,,,
+All Seasons,Catstronaut Backpack,TH-065-CATBAG,Default,2499,,6,CRITICAL_LOW,PAUSE_OR_RESTOCK,,,,,,,,,
+All Seasons,CasaFrolic Playpen,TH-052-PLAYPEN,Default,2999,,952,OK,YES,,,,,,,,,
+All Seasons,Luxe Litter Station,TH-064-LITTER,Default,3499,,0,OOS,NO,,,,,,,,,
+All Seasons,Aurora Litter Den,TH-087-LITTERDEN,Default,3699,,993,OK,YES,,,,,,,,,
+All Seasons,OdourShield Litter Box,TH-079-ODOURSHIELD,Default,2999,,998,OK,YES,,,,,,,,,
+All Seasons,PupTidy Poop Bags,TH-046-PTBAG,Default,599,,995,OK,YES,,,,,,,,,
+All Seasons,PoopScoop Buddy,TH-066-SCOOP,Default,1499,,941,OK,YES,,,,,,,,,
+All Seasons,Wovyn Cat Hammock,TH-097-WCATHAM,Default,5999,,0,OOS,NO,,,,,,,,,
+All Seasons,Elora Cove Hammock,TH-ELORACOVE,Default,,,,CHECK_ADMIN,CHECK,,,,,,,,,
+All Seasons,BlueWave Pool,TH-367-BLUEPOOL,Default,2999,,24,LOW,MONITOR,847,66.67,2152,1728.98,386,10,99.98,386,2026-06-19

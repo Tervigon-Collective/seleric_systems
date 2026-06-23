@@ -69,7 +69,8 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
 }
 "@
 
-    Start-Process pwsh -ArgumentList "-NoExit", "-Command", $orchCmd
+    $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
+    Start-Process $shell -ArgumentList "-NoExit", "-Command", $orchCmd
 } else {
     Write-Warn "Skipping orchestrator (-SkipOrchestrator)"
 }

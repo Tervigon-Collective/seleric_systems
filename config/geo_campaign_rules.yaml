@@ -1,0 +1,98 @@
+# Geo-Campaign Allocation Rules — Monsoon MVP
+# Edit thresholds here without touching code. Changes take effect on next run.
+# Mirrors the structure of config/rules.yaml.
+
+version: "1.0"
+ruleset: monsoon_geo_campaign_mvp
+
+# ── Global ─────────────────────────────────────────────────────────────────
+global:
+  brand_id: 20
+  current_season: Monsoon
+  target_roas: 2.5
+  min_orders_signal: 3          # Minimum attributed_orders in last 7d to qualify
+  lookback_days_velocity: 7     # Window for "current" sales velocity
+  lookback_days_baseline: 30    # Window for baseline velocity comparison
+
+# ── Scoring weights (must sum to 1.0) ──────────────────────────────────────
+scoring_weights:
+  sales_velocity:   0.30   # was 0.35 — slightly reduced to make room for weather
+  campaign_roas:    0.25   # was 0.30
+  season_match:     0.15   # was 0.20
+  inventory:        0.10
+  broad_discovery:  0.05
+  weather:          0.15   # Phase 2 — RAIN_ACTIVE=100, RAIN_EMERGING=75, etc.
+
+# ── Weather scores (per weather_stage; used for monsoon product fit) ─────────
+weather_scores:
+  RAIN_ACTIVE:    100   # peak rain — monsoon products at max demand
+  RAIN_EMERGING:   75   # building up — demand rising fast
+  HUMIDITY_HIGH:   60   # damp but no rain — hygiene/care products relevant
+  RAIN_DECLINING:  40   # transitioning out — triggers SWITCH_PRODUCT for rain SKUs
+  HEAT_HIGH:       30   # hot + dry — off-season for rain products
+  COLD_HIGH:       20   # winter — off-season
+  DRY:             20   # off-season baseline
+  UNKNOWN:         20   # fallback when no weather data available
+
+# ── Season match scores ─────────────────────────────────────────────────────
+season_scores:
+  exact_match:   100   # primary_season == current_season
+  all_seasons:   80    # 'All Seasons' products
+  no_match:      20    # Different season product
+
+# ── Inventory guard (uses stock_status from dim_th_sku_seasonal_map) ────────
+inventory:
+  block_statuses:
+    - OOS
+    - CRITICAL_LOW           # inventory_score = 0 for these
+  ok_score: 100
+  block_score: 0
+
+# ── Broad discovery bonus ────────────────────────────────────────────────────
+broad_discovery:
+  bonus_score: 100   # Applied (weighted 0.05) when city not in included_cities
+
+# ── Decision rules (evaluated in order — first match wins) ──────────────────
+
+scale:
+  opportunity_score_gte: 70
+  campaign_roas_gte: 2.5
+  inventory_block: false        # Must NOT be OOS/CRITICAL_LOW
+  budget_modifier: 1.25
+  label: SCALE
+
+launch:
+  opportunity_score_gte: 70
+  no_recent_spend: true         # No spend in the city for this product in last 7d
+  budget_modifier: 1.0
+  label: LAUNCH
+
+pause:
+  opportunity_score_lte: 30
+  campaign_roas_lte: 1.5
+  budget_modifier: 0.0
+  label: PAUSE
+
+hold:
+  label: HOLD
+  budget_modifier: 1.0          # Default — catch-all
+
+# ── Product switch (Phase 2 — activates when weather_stage is available) ────
+switch_product:
+  trigger_weather_stage: RAIN_DECLINING
+  from_products:
+    - Rover Raincoat
+    - StormGuard Jacket
+    - ZephyrLite Vest
+  to_products:
+    - Paw Cleanser
+    - Daily Pet Wipes
+    - Tick & Flea Shampoo
+    - No-Rinse Hygiene Spray
+    - Aloe Fresh Deodorant
+
+# ── ROAS normalisation cap ───────────────────────────────────────────────────
+roas_norm_cap: 5.0    # ROAS above this is treated as 5.0 for scoring (avoids outlier domination)
+
+# ── Velocity normalisation cap ───────────────────────────────────────────────
+velocity_norm_cap: 3.0   # orders_7d / baseline capped at 3× before scoring

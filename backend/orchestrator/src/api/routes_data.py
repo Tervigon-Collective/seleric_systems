@@ -1,22 +1,53 @@
-"""Data query routes: ads, neurotag, COGS, creative IQ.
+"""Data query routes: ads, neurotag, COGS, creative IQ, geo-allocation.
 
 These mirror the Next.js /api/ads/*, /api/neurotag/*, /api/tools/cogs-data,
 and /api/chat/creative-iq routes. All data comes from the Cube semantic layer.
+Geo-allocation data is read directly from gold.mart_geo_product_opportunity.
 """
 
 import asyncio
+import io
 import os
+import subprocess
+import sys
+from datetime import date as _date
 from typing import Any, Optional
 
 import httpx
+import requests
 import structlog
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
 from src.memory.cube_client import _auth_headers, _cube_load
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+# ── ClickHouse direct (for geo-allocation mart reads) ─────────────────────────
+
+_CH_HOST = os.environ.get("CLICKHOUSE_HOST", "clickhouse.seleric.com")
+_CH_PORT = int(os.environ.get("CLICKHOUSE_PORT", "8123"))
+_CH_USER = os.environ.get("CLICKHOUSE_USER", "seleric_admin789")
+_CH_PASS = os.environ.get("CLICKHOUSE_PASSWORD", "SelericDB7890")
+_CH_DB   = os.environ.get("CLICKHOUSE_DATABASE", "gold")
+
+
+def _ch_query(sql: str) -> list[dict]:
+    url  = f"http://{_CH_HOST}:{_CH_PORT}/?database={_CH_DB}"
+    resp = requests.post(
+        url,
+        data=(sql + "\nFORMAT JSONEachRow").encode("utf-8"),
+        auth=(_CH_USER, _CH_PASS),
+        timeout=60,
+    )
+    resp.raise_for_status()
+    import json
+    rows = []
+    for line in resp.text.splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
 
 DEFAULT_BRAND_ID = int(os.getenv("DEFAULT_BRAND_ID", "1"))
 
@@ -382,3 +413,111 @@ async def creative_iq(body: CreativeIQRequest):
         },
         "type": "creative_iq",
     }
+
+
+# ── Geo-Campaign Allocation ───────────────────────────────────────────────────
+
+
+@router.get("/geo-allocation")
+async def geo_allocation(
+    report_date: str = Query(default=None, description="YYYY-MM-DD (defaults to today)"),
+    brand_id: int   = Query(default=20),
+    action: Optional[str] = Query(default=None, description="Filter by action: SCALE|PAUSE|HOLD|SWITCH_PRODUCT"),
+):
+    """Read mart_geo_product_opportunity FINAL for a given date.
+
+    Returns:
+      summary  — action counts + city/product coverage
+      actions  — individual row records (HOLD filtered unless action=HOLD)
+      weather  — weather stage distribution
+    """
+    date_str = report_date or str(_date.today())
+
+    action_filter = f"AND recommended_action = '{action}'" if action else ""
+
+    summary_sql = f"""
+    SELECT
+        recommended_action,
+        count()                      AS n,
+        round(avg(roas), 2)          AS avg_roas,
+        countDistinct(city)          AS cities,
+        countDistinct(product_name)  AS products
+    FROM gold.mart_geo_product_opportunity FINAL
+    WHERE report_date = '{date_str}'
+      AND brand_id = {brand_id}
+    GROUP BY recommended_action
+    ORDER BY n DESC
+    """
+
+    rows_sql = f"""
+    SELECT
+        city, state, product_name, campaign_name, adset_name,
+        orders_7d, attributed_revenue, effective_city_spend,
+        round(roas, 2)                   AS roas,
+        round(opportunity_score, 1)      AS opportunity_score,
+        recommended_action, budget_modifier, reason,
+        weather_stage,
+        round(weather_score, 1)          AS weather_score,
+        broad_discovery_flag
+    FROM gold.mart_geo_product_opportunity FINAL
+    WHERE report_date = '{date_str}'
+      AND brand_id = {brand_id}
+      {action_filter}
+    ORDER BY opportunity_score DESC
+    LIMIT 500
+    """
+
+    weather_sql = f"""
+    SELECT
+        weather_stage,
+        count() AS n
+    FROM gold.mart_geo_product_opportunity FINAL
+    WHERE report_date = '{date_str}'
+      AND brand_id = {brand_id}
+      AND weather_stage != ''
+    GROUP BY weather_stage
+    ORDER BY n DESC
+    """
+
+    try:
+        summary_rows  = _ch_query(summary_sql)
+        action_rows   = _ch_query(rows_sql)
+        weather_rows  = _ch_query(weather_sql)
+    except Exception as exc:
+        logger.error("geo_allocation_query_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "date":     date_str,
+        "brand_id": brand_id,
+        "summary":  summary_rows,
+        "actions":  action_rows,
+        "weather":  weather_rows,
+    }
+
+
+def _run_mart_build(date_str: str, brand_id: int) -> None:
+    """Run build_geo_opportunity_mart.py in a subprocess (background task)."""
+    script = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "build_geo_opportunity_mart.py"
+    )
+    script = os.path.normpath(script)
+    cmd = [sys.executable, script, "--date", date_str, "--brand-id", str(brand_id)]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        logger.error("geo_allocation_run_failed", stderr=result.stderr[-1000:])
+    else:
+        logger.info("geo_allocation_run_ok", stdout=result.stdout[-500:])
+
+
+@router.post("/geo-allocation/run")
+async def geo_allocation_run(
+    background_tasks: BackgroundTasks,
+    report_date: str  = Query(default=None, description="YYYY-MM-DD (defaults to today)"),
+    brand_id: int     = Query(default=20),
+):
+    """Trigger a mart rebuild for the given date. Runs build_geo_opportunity_mart.py
+    in the background and returns immediately. Poll GET /geo-allocation to see results."""
+    date_str = report_date or str(_date.today())
+    background_tasks.add_task(_run_mart_build, date_str, brand_id)
+    return {"status": "queued", "date": date_str, "brand_id": brand_id}
