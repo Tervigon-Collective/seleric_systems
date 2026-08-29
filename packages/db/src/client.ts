@@ -1,4 +1,6 @@
-import { PrismaClient } from "@prisma/client"
+// Generated client lives at apps/web (schema.prisma generator.output).
+// Default @prisma/client stubs throw "did not initialize yet".
+import { PrismaClient } from "../../../apps/web/src/generated/prisma"
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 

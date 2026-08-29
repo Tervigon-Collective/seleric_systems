@@ -11,7 +11,9 @@ COPY packages/shared-types packages/shared-types
 COPY packages/db packages/db
 COPY services/worker services/worker
 
-RUN pnpm install --frozen-lockfile --filter @multiagent/worker... \
+# generate writes client to apps/web/src/generated/prisma (schema output path)
+RUN mkdir -p apps/web/src \
+    && pnpm install --frozen-lockfile --filter @multiagent/worker... \
     && pnpm --filter @multiagent/db generate
 
 WORKDIR /app/services/worker
