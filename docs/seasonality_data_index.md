@@ -24,8 +24,10 @@ Roughly at **Phase 1 complete, Phase 2 partially done**. Core ecommerce + ad spe
 | Meta Ads | ✅ Full + Extra | `fct_meta_ads_daily`, `fct_meta_ads_hourly`, `mart_meta_ad_daily_performance`, `mart_meta_ad_daily_attribution` |
 | Meta Creatives (Neurohack) | ✅ SELERIC-specific | `dim_neurohack`, `dim_ad_neurohack_map`, `mart_meta_ad_neurotag_daily` |
 | Google Ads | ✅ Full | `fct_google_ads_daily`, `fct_google_ads_hourly` |
+| Amazon SP + Ads | ✅ Full | `fct_amazon_sp_*`, `fct_amazon_order_items`, `fct_amazon_returns_*`, `fct_amazon_ads_*`, `fct_amazon_daily_pnl`; also rolled into `int_finance_daily_rollups` |
 | Website Session Funnel | ⚠️ Partial | `fct_session_funnel` — per-session grain; needs daily rollup by product × source |
 | Last-Touch Attribution | ✅ Full | `fct_order_attribution` (Meta + Google attributed orders/revenue) |
+| India festival calendar | ❌ Absent | No `dim_festival` / holiday table — analysis uses embedded calendar in `mcp_stack/semantic_layer_serve/scripts/india_festival_performance_analysis.py` |
 
 ### Metrics Computable Today
 
@@ -51,7 +53,6 @@ Roughly at **Phase 1 complete, Phase 2 partially done**. Core ecommerce + ad spe
 | Source | Blueprint Phase | What's Blocked Without It |
 |--------|----------------|--------------------------|
 | **Inventory Management System** | Phase 2 | `fact_inventory_daily`, `mart_inventory_analysis_daily`, availability rate, days cover, reorder risk, `scale_blocker_flag`, Inventory Scalability sub-score (10% of Product Performance Score) |
-| **Amazon Seller Central** | Phase 2 | Amazon orders/revenue, ASIN-level performance, Amazon advertising, Amazon returns, buy-box %, marketplace channel separation |
 | **Customer Support Platform** | Phase 3 | `fact_support_tickets_daily`, `mart_customer_quality_daily`, complaint rate, defect rate, size/fit issues, Customer Satisfaction sub-score (15% of Product Performance Score) |
 | **Review Platform** | Phase 3 | `review_score_avg`, `negative_review_rate`, Customer Satisfaction sub-score |
 | **Weather APIs (IMD / OpenWeatherMap)** | Phase 4 | `mart_context_analysis_daily`, `weather_score`, monsoon/heat wave/cold wave flags, Season Context Score (30% weather-driven) |
@@ -118,8 +119,9 @@ These are Phase 2 completable with existing data:
 | 3 | **Review platform data** | `review_score_avg`, `negative_review_rate` — needed to complete Customer Satisfaction Score |
 | 4 | **Weather API (IMD / OpenWeatherMap)** | Season Context Score (30% weight), monsoon/summer/winter signal scoring, seasonal campaign recommendations |
 | 5 | **Search Trends (Google Trends)** | `search_demand_lift` metric — feeds Demand Quality Score and Season Context Score |
-| 6 | **Amazon Seller Central** | Marketplace channel separation, ASIN-level analysis, Amazon ad attribution |
+| 6 | **India festival / season calendar dim** | Canonical festival windows (replace embedded script calendar); Season Context Score |
 | 7 | **Human Intelligence Module** | `mart_human_intelligence_signals`, Strategic Fit sub-score, corroboration of data signals, human validation for Forecast Readiness |
+| — | ~~Amazon Seller Central~~ | **Done** — SP orders/settlements/returns + Amazon Ads in gold (buy-box % still may be incomplete) |
 
 ---
 
@@ -148,10 +150,10 @@ Season Context Score (0–10) =
 + (0.10 × Human Intelligence Signal)  ← ❌ BLOCKED — no HI module
 ```
 
-**What can be approximated today:** Historical sales pattern index (from `fct_orders` grouped by category × month) + partial campaign response signal. This yields a rough 35% coverage of the season score, driven entirely by internal sales and ad data.
+**What can be approximated today:** Historical sales pattern index (from `fct_orders` / finance rollups grouped by day) + Meta/Google campaign response + **festival window analysis** via embedded calendar (`mcp_stack/semantic_layer_serve/scripts/india_festival_performance_analysis.py` → `output/festival_analysis/`). See [scripts/README.md](../../mcp_stack/semantic_layer_serve/scripts/README.md).
 
-**Minimum viable Season Context Score** requires at least weather data (Priority 4 above) and search trends (Priority 5) to be meaningful.
+**Minimum viable Season Context Score** still needs weather (Priority 4) and search trends (Priority 5), plus a warehouse `dim` for festivals (Priority 6) instead of the script-embedded calendar.
 
 ---
 
-*Last updated: June 2026*
+*Last updated: August 2026*
