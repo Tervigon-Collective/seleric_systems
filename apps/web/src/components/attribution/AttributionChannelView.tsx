@@ -246,7 +246,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
   return (
     <div className="space-y-4">
 <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400">
-        Attribution model: last-touch · Orders/revenue from <strong>gold.fct_order_attribution</strong> direct · Spend from <strong>gold.fct_daily_pnl</strong> direct · Net Profit from channel_pnl (Cube) · &quot;Other&quot; = unresolvable UTM (direct / referral / unknown)
+        Attribution model: last-touch · Orders/revenue from <strong>serve.platform_attribution_commerce</strong> · Spend from <strong>fct_meta_ads_daily</strong> / <strong>fct_google_ads_daily</strong> · Net Profit from channel_pnl (Cube)
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -289,7 +289,7 @@ export function AttributionChannelView({ data, searchParams }: Props) {
 
         <ChartCard
           title="Channel summary"
-          subtitle="Click a channel to drill down · fct_order_attribution + fct_daily_pnl direct · Net Profit from channel_pnl"
+          subtitle="Click a channel to drill down · platform_attribution_commerce + ad spend tables · Net Profit from channel_pnl"
           cube="fct_order_attribution"
           className="xl:col-span-2"
         >

@@ -9,7 +9,7 @@ import { type DashboardDateRange } from "../date-ranges"
 export interface DirectPlatformStat {
   platform: string
   total_orders: number
-  total_revenue: number  // net_price / 1.18 from fct_order_items (placed value ex GST)
+  total_revenue: number // gross_sales ex GST from serve.platform_attribution_commerce
 }
 
 export interface DirectTrendRow {
@@ -47,7 +47,7 @@ export interface CampaignAdSkuRow {
   sku: string
   product_title: string
   units: number
-  revenue: number  // net_price / 1.18 (placed value ex GST)
+  revenue: number // net_price / 1.18 (placed value ex GST)
 }
 
 // ─── Channel-view fetch ──────────────────────────────────────────────────────
@@ -68,40 +68,44 @@ export async function fetchAttributionDirect(
         AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
     `),
 
-    // Gross revenue via LEFT JOIN with fct_order_items (placed value, all statuses)
     clickHouseQuery<{ platform: string; total_orders: string; total_revenue: string }>(`
       SELECT
-        coalesce(nullIf(a.lt_platform, ''), 'other')      AS platform,
-        toInt64(COUNT(DISTINCT a.order_id))               AS total_orders,
-        toFloat64(SUM(i.net_price)) / 1.18                AS total_revenue
-      FROM gold.fct_order_attribution a
-      LEFT JOIN gold.fct_order_items i
-        ON a.order_id = i.order_id AND a.brand_id = i.brand_id
-      WHERE a.brand_id = ${b}
-        AND a.order_date BETWEEN toDate('${s}') AND toDate('${e}')
+        platform,
+        toInt64(count(DISTINCT order_id)) AS total_orders,
+        toFloat64(sum(gross_sales))       AS total_revenue
+      FROM serve.platform_attribution_commerce
+      WHERE brand_id = ${b}
+        AND report_date BETWEEN toDate('${s}') AND toDate('${e}')
       GROUP BY platform
       ORDER BY total_orders DESC
     `),
 
     clickHouseQuery<{ day: string; platform: string; orders: string }>(`
       SELECT
-        formatDateTime(order_date, '%Y-%m-%d')              AS day,
-        coalesce(nullIf(lt_platform, ''), 'other')          AS platform,
-        toInt64(COUNT(DISTINCT order_id))                   AS orders
-      FROM gold.fct_order_attribution
+        formatDateTime(report_date, '%Y-%m-%d') AS day,
+        platform,
+        toInt64(count(DISTINCT order_id))       AS orders
+      FROM serve.platform_attribution_commerce
       WHERE brand_id = ${b}
-        AND order_date BETWEEN toDate('${s}') AND toDate('${e}')
-      GROUP BY order_date, platform
-      ORDER BY order_date ASC
+        AND report_date BETWEEN toDate('${s}') AND toDate('${e}')
+      GROUP BY report_date, platform
+      ORDER BY report_date ASC
     `),
 
     clickHouseQuery<{ meta_spend: string; google_spend: string }>(`
       SELECT
-        toFloat64(sum(meta_spend))   AS meta_spend,
-        toFloat64(sum(google_spend)) AS google_spend
-      FROM gold.fct_daily_pnl
-      WHERE brand_id = ${b}
-        AND report_date BETWEEN toDate('${s}') AND toDate('${e}')
+        (
+          SELECT toFloat64(sum(spend))
+          FROM gold.fct_meta_ads_daily
+          WHERE brand_id = ${b}
+            AND report_date BETWEEN toDate('${s}') AND toDate('${e}')
+        ) AS meta_spend,
+        (
+          SELECT toFloat64(sum(spend))
+          FROM gold.fct_google_ads_daily
+          WHERE brand_id = ${b}
+            AND report_date BETWEEN toDate('${s}') AND toDate('${e}')
+        ) AS google_spend
     `),
   ])
 
@@ -132,11 +136,9 @@ function platformClause(channel: string): string {
   return `AND lt_platform = '${channel}'`
 }
 
-/** Distinct order counts at campaign and adset levels — for correct rollups
- * (summing ad-level COUNT(DISTINCT) over-counts when an order touches multiple ads in the same adset). */
 export interface CampaignRollupOrders {
-  campaign: Map<string, number>        // key: `${platform}||${campaign_name}`
-  adset: Map<string, number>           // key: `${platform}||${campaign_name}||${adset_name}`
+  campaign: Map<string, number>
+  adset: Map<string, number>
 }
 
 export async function fetchCampaignRollupOrders(
@@ -186,7 +188,6 @@ export async function fetchCampaignRollupOrders(
   return { campaign, adset }
 }
 
-/** Order counts at campaign × adset × ad level — no SKU join to avoid double-counting */
 export async function fetchCampaignAdRows(
   range: DashboardDateRange,
   brand: DashboardBrandFilter,
@@ -231,7 +232,6 @@ export async function fetchCampaignAdRows(
   }))
 }
 
-/** Gross revenue + units per ad × SKU — used for SKU breakdown rows */
 export async function fetchCampaignAdSkuRows(
   range: DashboardDateRange,
   brand: DashboardBrandFilter,

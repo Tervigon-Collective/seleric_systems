@@ -65,11 +65,10 @@ export default async function PnlDashboardPage({
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-night-50">P&L Dashboard</h1>
           <p className="text-sm text-stone-500 dark:text-night-500 mt-1">
-            Direct from gold.fct_daily_pnl · {brandText} · {rangeLabel} · IST report_date · refund-event axis
+            Certified rollups (int_finance_daily_rollups + ad spend) · {brandText} · {rangeLabel} · IST report_date
           </p>
           <p className="text-xs text-stone-400 dark:text-night-600 mt-1">
-            net_sales = gross_sales − discounts − returns − adjustments · cancellations are audit-only · gross_profit
-            = net_sales − COGS · net_profit = gross_profit − ad spend − shipping − packaging − gateway − RTO ·
+            net_sales from finance rollups · gross_profit = net_sales − net COGS · net_profit = net_sales − net COGS − ad spend ·
             Incl-GST column = excl × 1.18 on taxable revenue, costs/ad spend unchanged
           </p>
           {error && (

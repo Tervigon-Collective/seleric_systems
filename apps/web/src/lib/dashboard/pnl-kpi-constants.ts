@@ -1,4 +1,4 @@
-/** Canonical KPI measures — chart view daily_pnl (gold.fct_daily_pnl).
+/** Canonical KPI measures — chart view daily_pnl (int_finance_daily_rollups + ad spend).
  *
  * Orders measure note: `daily_pnl.orders_created` = every Shopify "Created at"
  * placement (active + payment_pending + cancelled + refunded + voided + RTO

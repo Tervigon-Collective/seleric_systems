@@ -20,16 +20,9 @@ export interface PnlDashboardData {
 }
 
 /**
- * The /pnl dashboard now reads `gold.fct_daily_pnl` directly via ClickHouse
- * HTTP rather than going through the Cube semantic layer. This guarantees
- * Net sales / Gross profit / Net profit match the canonical bridge defined
- * in `scripts/reconcile_daily_pnl_audit.py` (the Cube's `net_sales_excl_tax`
- * column is materialised on a different refund axis and drifts by the size
- * of cancellation/voided refund timing each month).
- *
- * The output rows still use cube-style `canonical_pnl.*` measure keys so the
- * existing breakdown / waterfall / time-series components consume them
- * unchanged.
+ * The /pnl dashboard reads certified finance rollups + ad spend tables directly
+ * via ClickHouse (same sources as MCP `daily_pnl`). Output rows use
+ * cube-style `canonical_pnl.*` measure keys for existing breakdown components.
  */
 export async function fetchPnlDashboardData(
   range: DashboardDateRange,

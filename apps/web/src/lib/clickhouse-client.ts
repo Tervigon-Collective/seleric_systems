@@ -3,22 +3,10 @@ import "server-only"
 import { serverLog } from "./server-log"
 
 /**
- * Minimal ClickHouse HTTP client for server-side dashboard queries that need
- * to read raw `gold.fct_daily_pnl` columns directly (bypassing the Cube
- * semantic layer). Used by `lib/dashboard/queries/pnl-clickhouse.ts` so that
- * the /pnl page can match the canonical P&L bridge:
- *
- *   net_sales_excl_gst = gross_sales_excl_gst
- *                      − total_discounts_excl_gst
- *                      − notes_return_refund_excl_gst
- *                      − notes_adjustment_refund_excl_gst
- *   (cancellations are audit-only, never subtracted)
- *
- * Cube measures use a slightly different bridge (placement vs refund-event
- * axes) which makes their `net_sales_excl_tax` / `net_profit` columns drift
- * from the SQL formula in months with non-trivial cancellation/return
- * timing. Querying ClickHouse directly side-steps that and guarantees the
- * dashboard matches `scripts/reconcile_daily_pnl_audit.py`.
+ * Minimal ClickHouse HTTP client for server-side dashboard queries.
+ * Used by `lib/dashboard/queries/pnl-clickhouse.ts` and
+ * `attribution-clickhouse.ts` to read certified rollups, serve views, and ad
+ * spend tables — aligned with MCP `daily_pnl` / `platform_attribution_commerce`.
  */
 
 export interface ClickHouseConfig {

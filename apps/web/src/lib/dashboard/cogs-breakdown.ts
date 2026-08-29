@@ -1,4 +1,4 @@
-/** Cost components from canonical_pnl (gold.fct_daily_pnl). */
+/** Cost components from canonical_pnl (int_finance_daily_rollups (via daily_pnl)). */
 export const COGS_BREAKDOWN_MEASURES = [
   "canonical_pnl.product_cost",
   "canonical_pnl.shipping_cost",
